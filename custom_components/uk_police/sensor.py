@@ -5,15 +5,6 @@ import logging
 import re
 from typing import Any
 
-
-def _strip_html(text: str | None) -> str:
-    """Remove HTML tags and normalise whitespace/newlines from API text."""
-    if not text:
-        return ""
-    cleaned = re.sub(r"<[^>]+>", "", text)
-    cleaned = re.sub(r"\s+", " ", cleaned)
-    return cleaned.strip()
-
 from homeassistant.components.sensor import (
     SensorEntity,
     SensorEntityDescription,
@@ -35,6 +26,15 @@ from .const import (
 from .coordinator import UKPoliceDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _strip_html(text: str | None) -> str:
+    """Remove HTML tags and normalise whitespace/newlines from API text."""
+    if not text:
+        return ""
+    cleaned = re.sub(r"<[^>]+>", "", text)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
 
 
 async def async_setup_entry(

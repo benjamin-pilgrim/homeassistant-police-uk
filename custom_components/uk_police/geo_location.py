@@ -1,0 +1,390 @@
+"""Geo location platform for UK Police – crime map pins (grouped or individual)."""
+from __future__ import annotations
+
+import logging
+from collections import defaultdict
+from math import atan2, cos, radians, sin, sqrt
+from typing import Any
+
+from homeassistant.components.geo_location import GeolocationEvent
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import (
+    ATTRIBUTION,
+    CONF_FORCE_NAME,
+    CONF_MAP_MODE,
+    CONF_NEIGHBOURHOOD_NAME,
+    CRIME_CATEGORIES,
+    DEFAULT_MAP_MODE,
+    DOMAIN,
+    MAP_MODE_INDIVIDUAL,
+)
+from .coordinator import UKPoliceDataUpdateCoordinator
+
+_LOGGER = logging.getLogger(__name__)
+
+# Category → MDI icon
+_CATEGORY_ICONS: dict[str, str] = {
+    "anti-social-behaviour": "mdi:account-alert",
+    "bicycle-theft": "mdi:bicycle",
+    "burglary": "mdi:home-alert",
+    "criminal-damage-arson": "mdi:fire-alert",
+    "drugs": "mdi:pill",
+    "other-theft": "mdi:bag-personal-off",
+    "possession-of-weapons": "mdi:knife",
+    "public-order": "mdi:account-group",
+    "robbery": "mdi:robber",
+    "shoplifting": "mdi:storefront-outline",
+    "theft-from-the-person": "mdi:hand-coin",
+    "vehicle-crime": "mdi:car",
+    "violent-crime": "mdi:account-injury",
+    "other-crime": "mdi:police-badge-outline",
+    "all-crime": "mdi:map-marker-alert",
+}
+
+
+def _haversine_mi(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Return the great-circle distance in miles between two lat/lng points."""
+    R = 3_958.8  # Earth radius in miles
+    phi1, phi2 = radians(lat1), radians(lat2)
+    d_phi = radians(lat2 - lat1)
+    d_lam = radians(lng2 - lng1)
+    a = sin(d_phi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(d_lam / 2) ** 2
+    return R * 2 * atan2(sqrt(a), sqrt(1 - a))
+
+
+def _centroid(crimes: list[dict]) -> tuple[float | None, float | None]:
+    """Return the mean lat/lng of a list of crime records."""
+    lats, lngs = [], []
+    for c in crimes:
+        loc = c.get("location") or {}
+        try:
+            lats.append(float(loc["latitude"]))
+            lngs.append(float(loc["longitude"]))
+        except (KeyError, TypeError, ValueError):
+            pass
+    if not lats:
+        return None, None
+    return sum(lats) / len(lats), sum(lngs) / len(lngs)
+
+
+def _crime_key(crime: dict, group_counters: dict[str, int]) -> str:
+    """Return a stable unique key for an individual crime record.
+
+    Uses persistent_id when available (genuinely stable across months).
+    Falls back to a per-category/street counter so entity IDs don't change
+    just because a new data month is loaded — keeping registry churn minimal.
+    """
+    pid = crime.get("persistent_id", "")
+    if pid:
+        return str(pid)
+    loc = crime.get("location") or {}
+    street_id = str((loc.get("street") or {}).get("id", ""))
+    cat = crime.get("category", "other-crime")
+    base = f"{cat}_{street_id}"
+    group_counters[base] = group_counters.get(base, -1) + 1
+    return f"{base}_{group_counters[base]}"
+
+
+def _remove_from_registry(hass: HomeAssistant, pin: "_UKPolicePinBase") -> None:
+    """Remove a pin from the entity registry (and therefore the state machine)."""
+    registry = er.async_get(hass)
+    entity_id = registry.async_get_entity_id("geo_location", DOMAIN, pin.unique_id)
+    if entity_id:
+        registry.async_remove(entity_id)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up geo_location entities based on the configured map mode."""
+    coordinator: UKPoliceDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    map_mode = entry.options.get(CONF_MAP_MODE, DEFAULT_MAP_MODE)
+    home_lat: float = hass.config.latitude
+    home_lng: float = hass.config.longitude
+
+    # Purge entity registry entries that belong to the OTHER map mode.
+    # This handles the case where the user switches mode in options — without this,
+    # the old entities stay in the registry and show as "Unavailable" forever.
+    registry = er.async_get(hass)
+    stale_prefix = (
+        f"{entry.entry_id}_crime_"
+        if map_mode != MAP_MODE_INDIVIDUAL
+        else f"{entry.entry_id}_category_"
+    )
+    for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if entity_entry.unique_id.startswith(stale_prefix):
+            registry.async_remove(entity_entry.entity_id)
+
+    if map_mode == MAP_MODE_INDIVIDUAL:
+        _setup_individual(hass, entry, coordinator, async_add_entities, home_lat, home_lng)
+    else:
+        _setup_grouped(hass, entry, coordinator, async_add_entities, home_lat, home_lng)
+
+
+def _setup_grouped(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: UKPoliceDataUpdateCoordinator,
+    async_add_entities: AddEntitiesCallback,
+    home_lat: float,
+    home_lng: float,
+) -> None:
+    """Register listener for grouped-by-category map pins."""
+    tracked: dict[str, UKPoliceCategoryPin] = {}
+
+    @callback
+    def _handle_update() -> None:
+        crimes = (coordinator.data or {}).get("crimes_street", []) or []
+
+        by_category: dict[str, list[dict]] = defaultdict(list)
+        for crime in crimes:
+            cat = crime.get("category", "other-crime")
+            by_category[cat].append(crime)
+
+        new_entities: list[UKPoliceCategoryPin] = []
+        seen: set[str] = set()
+
+        for category, cat_crimes in by_category.items():
+            seen.add(category)
+            if category not in tracked:
+                pin = UKPoliceCategoryPin(
+                    coordinator, entry, category, cat_crimes, home_lat, home_lng
+                )
+                tracked[category] = pin
+                new_entities.append(pin)
+            else:
+                tracked[category].update_crimes(cat_crimes, home_lat, home_lng)
+
+        for stale_cat in [c for c in list(tracked) if c not in seen]:
+            _remove_from_registry(hass, tracked[stale_cat])
+            del tracked[stale_cat]
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    cancel_listener = coordinator.async_add_listener(_handle_update)
+    entry.async_on_unload(cancel_listener)
+    _handle_update()
+
+
+def _setup_individual(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: UKPoliceDataUpdateCoordinator,
+    async_add_entities: AddEntitiesCallback,
+    home_lat: float,
+    home_lng: float,
+) -> None:
+    """Register listener for individual crime incident map pins."""
+    tracked: dict[str, UKPoliceCrimePin] = {}
+
+    @callback
+    def _handle_update() -> None:
+        crimes = (coordinator.data or {}).get("crimes_street", []) or []
+
+        new_entities: list[UKPoliceCrimePin] = []
+        seen: set[str] = set()
+        # Fresh counter per update so per-group indices are consistent
+        group_counters: dict[str, int] = {}
+
+        for crime in crimes:
+            key = _crime_key(crime, group_counters)
+            seen.add(key)
+            if key not in tracked:
+                pin = UKPoliceCrimePin(coordinator, entry, key, crime, home_lat, home_lng)
+                tracked[key] = pin
+                new_entities.append(pin)
+            else:
+                tracked[key].update_crime(crime, home_lat, home_lng)
+
+        for stale_key in [k for k in list(tracked) if k not in seen]:
+            _remove_from_registry(hass, tracked[stale_key])
+            del tracked[stale_key]
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    cancel_listener = coordinator.async_add_listener(_handle_update)
+    entry.async_on_unload(cancel_listener)
+    _handle_update()
+
+
+# ---------------------------------------------------------------------------
+# Base entity
+# ---------------------------------------------------------------------------
+
+class _UKPolicePinBase(
+    CoordinatorEntity[UKPoliceDataUpdateCoordinator], GeolocationEvent
+):
+    """Shared base for all UK Police geo_location pins."""
+
+    _attr_attribution = ATTRIBUTION
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_source = DOMAIN
+    _attr_unit_of_measurement = "mi"
+
+    def __init__(
+        self,
+        coordinator: UKPoliceDataUpdateCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        CoordinatorEntity.__init__(self, coordinator)
+        GeolocationEvent.__init__(self)
+        self._entry = entry
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        force_name = self._entry.data.get(CONF_FORCE_NAME, "")
+        neighbourhood_name = self._entry.data.get(CONF_NEIGHBOURHOOD_NAME, "")
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry.entry_id)},
+            name=f"{force_name} – {neighbourhood_name}",
+            manufacturer="data.police.uk",
+            model="UK Police API",
+            entry_type="service",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Grouped mode entity
+# ---------------------------------------------------------------------------
+
+class UKPoliceCategoryPin(_UKPolicePinBase):
+    """One map pin per crime category, centred on the mean position of all crimes in that category."""
+
+    def __init__(
+        self,
+        coordinator: UKPoliceDataUpdateCoordinator,
+        entry: ConfigEntry,
+        category: str,
+        crimes: list[dict],
+        home_lat: float,
+        home_lng: float,
+    ) -> None:
+        super().__init__(coordinator, entry)
+        self._category = category
+        self._crimes = crimes
+        self._refresh_derived(home_lat, home_lng)
+
+    def _refresh_derived(self, home_lat: float, home_lng: float) -> None:
+        label = CRIME_CATEGORIES.get(
+            self._category, self._category.replace("-", " ").title()
+        )
+        count = len(self._crimes)
+        self._attr_name = f"{label} ({count})"
+        self._attr_icon = _CATEGORY_ICONS.get(self._category, "mdi:map-marker-alert")
+        lat, lng = _centroid(self._crimes)
+        self._attr_latitude = lat
+        self._attr_longitude = lng
+        if lat is not None and lng is not None:
+            self._attr_distance = round(_haversine_mi(home_lat, home_lng, lat, lng), 2)
+        else:
+            self._attr_distance = 0.0
+
+    @callback
+    def update_crimes(self, crimes: list[dict], home_lat: float, home_lng: float) -> None:
+        """Refresh crimes list and recalculate derived attributes."""
+        self._crimes = crimes
+        self._refresh_derived(home_lat, home_lng)
+        self.async_write_ha_state()
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._entry.entry_id}_category_{self._category}"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        month = self.coordinator.client.latest_month() if self.coordinator.data else ""
+        incidents = []
+        for c in self._crimes:
+            loc = c.get("location") or {}
+            street = (loc.get("street") or {}).get("name", "")
+            outcome = c.get("outcome_status") or {}
+            outcome_cat = outcome.get("category", "") if isinstance(outcome, dict) else ""
+            incidents.append(
+                {
+                    "street": street,
+                    "outcome": outcome_cat,
+                    "month": c.get("month", month),
+                }
+            )
+        return {
+            "category": self._category,
+            "count": len(self._crimes),
+            "month": month,
+            "incidents": incidents,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Individual mode entity
+# ---------------------------------------------------------------------------
+
+class UKPoliceCrimePin(_UKPolicePinBase):
+    """One map pin per individual crime incident."""
+
+    def __init__(
+        self,
+        coordinator: UKPoliceDataUpdateCoordinator,
+        entry: ConfigEntry,
+        key: str,
+        crime: dict,
+        home_lat: float,
+        home_lng: float,
+    ) -> None:
+        super().__init__(coordinator, entry)
+        self._key = key
+        self._crime = crime
+        self._refresh_derived(home_lat, home_lng)
+
+    def _refresh_derived(self, home_lat: float, home_lng: float) -> None:
+        category = self._crime.get("category", "other-crime")
+        label = CRIME_CATEGORIES.get(category, category.replace("-", " ").title())
+        loc = self._crime.get("location") or {}
+        street = (loc.get("street") or {}).get("name", "Unknown street")
+        self._attr_name = f"{label} – {street}"
+        self._attr_icon = _CATEGORY_ICONS.get(category, "mdi:map-marker-alert")
+        try:
+            lat = float(loc["latitude"])
+            lng = float(loc["longitude"])
+            self._attr_latitude = lat
+            self._attr_longitude = lng
+            self._attr_distance = round(_haversine_mi(home_lat, home_lng, lat, lng), 2)
+        except (KeyError, TypeError, ValueError):
+            self._attr_latitude = None
+            self._attr_longitude = None
+            self._attr_distance = 0.0
+
+    @callback
+    def update_crime(self, crime: dict, home_lat: float, home_lng: float) -> None:
+        """Refresh crime data and recalculate derived attributes."""
+        self._crime = crime
+        self._refresh_derived(home_lat, home_lng)
+        self.async_write_ha_state()
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._entry.entry_id}_crime_{self._key}"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        loc = self._crime.get("location") or {}
+        street = (loc.get("street") or {}).get("name", "")
+        outcome = self._crime.get("outcome_status") or {}
+        outcome_cat = outcome.get("category", "") if isinstance(outcome, dict) else ""
+        return {
+            "category": self._crime.get("category", ""),
+            "street": street,
+            "outcome": outcome_cat,
+            "month": self._crime.get("month", ""),
+            "persistent_id": self._crime.get("persistent_id", ""),
+        }

@@ -1,12 +1,14 @@
 # UK Police – Home Assistant Integration
+[![HACS Custom Repository](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
+[![HA Version](https://img.shields.io/badge/Home%20Assistant-2024.1%2B-blue)](https://home-assistant.io)
+[![GitHub](https://img.shields.io/badge/GitHub-91JJ%2FHA__UK__Police-lightgrey?logo=github)](https://github.com/91JJ/HA_UK_Police)
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/91JJ/HA_UK_Police/main/custom_components/uk_police/brands/logo.png" alt="UK Police Integration" width="420">
 </p>
 
-[![HACS Custom Repository](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
-[![HA Version](https://img.shields.io/badge/Home%20Assistant-2024.1%2B-blue)](https://home-assistant.io)
-[![GitHub](https://img.shields.io/badge/GitHub-91JJ%2FHA__UK__Police-lightgrey?logo=github)](https://github.com/91JJ/HA_UK_Police)
+
+
 
 A bespoke Home Assistant integration that surfaces live data from the **[UK Police open data API](https://data.police.uk/docs/)** directly into your HA dashboard. Entirely free, no API key required.
 

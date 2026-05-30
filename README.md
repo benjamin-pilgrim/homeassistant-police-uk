@@ -150,7 +150,7 @@ cards:
 
 ## Data Sources
 
-All data is sourced from [data.police.uk](https://data.police.uk) — the official open data platform for UK police forces. Map tiles courtesy of [OpenStreetMap](https://www.openstreetmap.org/copyright).
+All data is sourced from [data.police.uk](https://data.police.uk) — the official open data platform for UK police forces.
 
 ## License
 

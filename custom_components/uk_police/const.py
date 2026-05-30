@@ -1,7 +1,6 @@
 """Constants for UK Police integration."""
 
 DOMAIN = "uk_police"
-PLATFORMS = ["sensor", "binary_sensor", "geo_location"]
 
 # Update interval in minutes
 DEFAULT_SCAN_INTERVAL = 60
@@ -46,44 +45,6 @@ CRIME_CATEGORIES = {
     "vehicle-crime": "Vehicle Crime",
     "violent-crime": "Violent Crime",
     "other-crime": "Other Crime",
-}
-
-# Outcome categories
-OUTCOME_CATEGORIES = {
-    "under-investigation": "Under Investigation",
-    "awaiting-court-outcome": "Awaiting Court Outcome",
-    "unable-to-prosecute": "Unable to Prosecute",
-    "local-resolution": "Local Resolution",
-    "no-further-action": "No Further Action",
-    "defendant-sent-to-crown-court": "Sent to Crown Court",
-    "offender-given-suspended-prison-sentence": "Suspended Sentence",
-    "offender-fined": "Offender Fined",
-    "offender-given-community-sentence": "Community Sentence",
-    "offender-deprived-of-property": "Deprived of Property",
-    "offender-given-conditional-discharge": "Conditional Discharge",
-    "offender-given-absolute-discharge": "Absolute Discharge",
-    "offender-given-penalty-notice": "Penalty Notice",
-    "offender-sent-to-prison": "Sent to Prison",
-    "offender-otherwise-dealt-with": "Otherwise Dealt With",
-    "formal-action-is-not-in-the-public-interest": "Not in Public Interest",
-    "court-result-unavailable": "Court Result Unavailable",
-    "offender-cautioned": "Offender Cautioned",
-    "status-update-unavailable": "Status Update Unavailable",
-}
-
-# Stop & search object types
-STOP_SEARCH_OBJECT_TYPES = {
-    "articles_for_use_in_connection_with": "Articles for Use in Connection With",
-    "controlled_drugs": "Controlled Drugs",
-    "firearms": "Firearms",
-    "going_equipped_for_stealing": "Going Equipped for Stealing",
-    "offensive_weapons": "Offensive Weapons",
-    "stolen_articles": "Stolen Articles",
-    "evidence_of_offences_under_s1_customs": "Customs Offences Evidence",
-    "items_which_may_damage_or_destroy_property": "Items to Damage/Destroy Property",
-    "evidence_of_wildlife_offences": "Wildlife Offence Evidence",
-    "evidence_of_game_or_poaching_offences": "Poaching Offence Evidence",
-    "anything_to_threaten_or_harm_anyone": "Items to Threaten/Harm",
 }
 
 # Attribution

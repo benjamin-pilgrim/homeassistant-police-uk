@@ -12,7 +12,6 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import aiohttp_client
-import homeassistant.helpers.config_validation as cv
 
 from .api import UKPoliceApiClient, UKPoliceApiError
 from .const import (

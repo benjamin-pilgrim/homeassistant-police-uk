@@ -107,14 +107,14 @@ All entity IDs follow the pattern `sensor.{force}_{neighbourhood}_{sensor_name}`
 To find your exact prefix:
 1. Go to **Developer Tools → States**
 2. Filter by `uk_police` or search for `total_crimes`
-3. Your prefix is everything before `_total_crimes` — e.g., `south_yorkshire_oughtibridge`
+3. Your prefix is everything before `_total_crimes` — e.g., `metropolitan_west_end`
 
 ---
 
 ## Example Dashboard (Lovelace)
 
 ```yaml
-# Replace YOUR_PREFIX with your entity prefix (e.g. south_yorkshire_oughtibridge)
+# Replace YOUR_PREFIX with your entity prefix (e.g. metropolitan_west_end)
 # Find it in Developer Tools → States by searching for 'total_crimes'
 
 type: vertical-stack

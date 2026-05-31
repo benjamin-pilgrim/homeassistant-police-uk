@@ -2,8 +2,9 @@
 
 DOMAIN = "uk_police"
 
-# Update interval in minutes
-DEFAULT_SCAN_INTERVAL = 60
+# How often (minutes) the coordinator wakes up to check if police data has changed.
+# The API only publishes new data roughly every 2 months, so once per day is plenty.
+DEFAULT_SCAN_INTERVAL = 1440  # 24 hours
 
 # UK Police API base URL
 API_BASE_URL = "https://data.police.uk/api"

@@ -161,7 +161,11 @@ def _setup_grouped(
                 tracked[category] = pin
                 new_entities.append(pin)
             else:
-                tracked[category].update_crimes(cat_crimes, home_lat, home_lng)
+                # Guard: only update state if entity has been added to HA already.
+                # Without this, a double-call during setup causes a crash because
+                # hass is still None on entities queued but not yet registered.
+                if tracked[category].hass is not None:
+                    tracked[category].update_crimes(cat_crimes, home_lat, home_lng)
 
         for stale_cat in [c for c in list(tracked) if c not in seen]:
             _remove_from_registry(hass, tracked[stale_cat])
@@ -172,6 +176,9 @@ def _setup_grouped(
 
     cancel_listener = coordinator.async_add_listener(_handle_update)
     entry.async_on_unload(cancel_listener)
+    # Explicit initial call ensures entities are created even in HA versions where
+    # async_add_listener does not fire the callback immediately on registration.
+    # The hass-guard above prevents any crash if it was already called by the listener.
     _handle_update()
 
 
@@ -203,7 +210,9 @@ def _setup_individual(
                 tracked[key] = pin
                 new_entities.append(pin)
             else:
-                tracked[key].update_crime(crime, home_lat, home_lng)
+                # Guard: only update state if entity has been added to HA already.
+                if tracked[key].hass is not None:
+                    tracked[key].update_crime(crime, home_lat, home_lng)
 
         for stale_key in [k for k in list(tracked) if k not in seen]:
             _remove_from_registry(hass, tracked[stale_key])
@@ -214,6 +223,9 @@ def _setup_individual(
 
     cancel_listener = coordinator.async_add_listener(_handle_update)
     entry.async_on_unload(cancel_listener)
+    # Explicit initial call ensures entities are created even in HA versions where
+    # async_add_listener does not fire the callback immediately on registration.
+    # The hass-guard above prevents any crash if it was already called by the listener.
     _handle_update()
 
 
@@ -229,7 +241,6 @@ class _UKPolicePinBase(
     _attr_attribution = ATTRIBUTION
     _attr_has_entity_name = True
     _attr_should_poll = False
-    _attr_source = DOMAIN
     _attr_unit_of_measurement = "mi"
 
     def __init__(
@@ -240,6 +251,13 @@ class _UKPolicePinBase(
         CoordinatorEntity.__init__(self, coordinator)
         GeolocationEvent.__init__(self)
         self._entry = entry
+        # Per-entry source so map cards can filter by location.
+        # Hyphens in API IDs (e.g. "city-of-london", "west-end") are normalised to
+        # underscores so the value is safe to paste directly into a Lovelace card.
+        # Results in e.g. "uk_police_metropolitan_west_end".
+        self._attr_source = (
+            f"{DOMAIN}_{coordinator.force_id}_{coordinator.neighbourhood_id}"
+        ).replace("-", "_")
 
     @property
     def device_info(self) -> DeviceInfo:

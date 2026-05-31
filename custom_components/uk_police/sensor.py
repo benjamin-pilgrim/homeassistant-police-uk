@@ -64,6 +64,8 @@ async def async_setup_entry(
     entities.append(UKPoliceStopSearchByOutcomeSensor(coordinator, entry))
     entities.append(UKPoliceStopSearchByEthnicitySensor(coordinator, entry))
     entities.append(UKPoliceMonthlyTrendSensor(coordinator, entry))
+    entities.append(UKPoliceForceDescriptionSensor(coordinator, entry))
+    entities.append(UKPoliceForceEngagementSensor(coordinator, entry))
 
     # --- Per-category crime count sensors ---
     for category_id, category_name in CRIME_CATEGORIES.items():
@@ -538,4 +540,63 @@ class UKPoliceForceTelephoneSensor(UKPoliceBaseSensor):
         return {
             "force_url": self._computed.get("force_url", ""),
             "force_description": self._computed.get("force_description", ""),
+            "engagement_methods": self._computed.get("force_engagement_methods", []),
+        }
+
+
+class UKPoliceForceDescriptionSensor(UKPoliceBaseSensor):
+    """Full description of the police force."""
+
+    _attr_name = "Force Description"
+    _attr_icon = "mdi:information-outline"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._entry.entry_id}_force_description"
+
+    @property
+    def native_value(self) -> str | None:
+        desc = self._computed.get("force_description", "")
+        # HA state is capped at 255 chars; surface a useful preview
+        if not desc:
+            return "No description available"
+        return desc[:255] if len(desc) > 255 else desc
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "full_description": self._computed.get("force_description", ""),
+            "url": self._computed.get("force_url", ""),
+            "telephone": self._computed.get("force_telephone", ""),
+        }
+
+
+class UKPoliceForceEngagementSensor(UKPoliceBaseSensor):
+    """Social media and online engagement channels for the force."""
+
+    _attr_name = "Force Engagement Channels"
+    _attr_icon = "mdi:share-variant"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "channels"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._entry.entry_id}_force_engagement"
+
+    @property
+    def native_value(self) -> int:
+        return len(self._computed.get("force_engagement_methods", []))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        methods = self._computed.get("force_engagement_methods", [])
+        return {
+            "channels": methods,
+            # Convenience flat dict: title → url (useful in templates)
+            "links": {
+                m["title"]: m["url"]
+                for m in methods
+                if m.get("title") and m.get("url")
+            },
+            "engagement_methods": self._computed.get("force_engagement_methods", []),
         }

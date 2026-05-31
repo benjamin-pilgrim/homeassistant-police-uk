@@ -66,6 +66,10 @@ class UKPoliceDataUpdateCoordinator(DataUpdateCoordinator):
         self.lat: float = entry.data[CONF_LATITUDE]
         self.lng: float = entry.data[CONF_LONGITUDE]
 
+        # Track the last seen crime-data publication date so we can skip
+        # unnecessary full fetches when the API hasn't published new data.
+        self._last_data_date: str | None = None
+
     @property
     def include_stop_search(self) -> bool:
         return self.entry.options.get(CONF_INCLUDE_STOP_SEARCH, DEFAULT_INCLUDE_STOP_SEARCH)
@@ -75,13 +79,34 @@ class UKPoliceDataUpdateCoordinator(DataUpdateCoordinator):
         return self.entry.options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS)
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch all data from the UK Police API."""
+        """Daily lightweight check; only run a full fetch when the API has new data."""
         try:
-            return await self._fetch_all()
+            # Quick single call to find out when the police last published data.
+            fresh = await self.client.get_crime_last_updated()
+            latest_date = (fresh or {}).get("date", "")
+
+            if latest_date and latest_date == self._last_data_date and self.data:
+                _LOGGER.debug(
+                    "UK Police data unchanged (last published %s) – skipping full fetch",
+                    latest_date,
+                )
+                return self.data  # return cached data unchanged
+
+            _LOGGER.debug(
+                "UK Police data changed (was %s, now %s) – running full fetch",
+                self._last_data_date,
+                latest_date,
+            )
+            result = await self._fetch_all(prefetched_last_updated=fresh)
+            self._last_data_date = latest_date
+            return result
         except UKPoliceApiError as err:
             raise UpdateFailed(f"Error communicating with UK Police API: {err}") from err
 
-    async def _fetch_all(self) -> dict[str, Any]:
+    async def _fetch_all(
+        self,
+        prefetched_last_updated: dict | None = None,
+    ) -> dict[str, Any]:
         """Run API calls in small sequential batches to avoid 429 rate limiting."""
         date_str = self.client.latest_month()
         data: dict[str, Any] = {}
@@ -103,16 +128,23 @@ class UKPoliceDataUpdateCoordinator(DataUpdateCoordinator):
             await asyncio.sleep(_INTER_REQUEST_DELAY)
 
         # --- Batch 2: force metadata + crime freshness – sequential ---
-        for key, coro in [
-            ("force_detail",      self.client.get_force_detail(self.force_id)),
-            ("crime_last_updated", self.client.get_crime_last_updated()),
-        ]:
+        # crime_last_updated may already be fetched by the pre-check; reuse it.
+        if prefetched_last_updated is not None:
+            data["crime_last_updated"] = prefetched_last_updated
+        else:
             try:
-                data[key] = await coro
+                data["crime_last_updated"] = await self.client.get_crime_last_updated()
             except UKPoliceApiError as err:
-                _LOGGER.warning("Failed to fetch %s: %s", key, err)
-                data[key] = None
+                _LOGGER.warning("Failed to fetch crime_last_updated: %s", err)
+                data["crime_last_updated"] = None
             await asyncio.sleep(_INTER_REQUEST_DELAY)
+
+        try:
+            data["force_detail"] = await self.client.get_force_detail(self.force_id)
+        except UKPoliceApiError as err:
+            _LOGGER.warning("Failed to fetch force_detail: %s", err)
+            data["force_detail"] = None
+        await asyncio.sleep(_INTER_REQUEST_DELAY)
 
         # --- Batch 3: street crimes for latest month ---
         try:
@@ -250,6 +282,14 @@ class UKPoliceDataUpdateCoordinator(DataUpdateCoordinator):
         stats["force_telephone"] = force.get("telephone", "")
         stats["force_url"] = force.get("url", "")
         stats["force_description"] = _strip_html(force.get("description", ""))
+        stats["force_engagement_methods"] = [
+            {
+                "title": m.get("title", ""),
+                "url": m.get("url", "") or "",
+                "description": _strip_html(m.get("description") or ""),
+            }
+            for m in (force.get("engagement_methods") or [])
+        ]
 
         # --- Last updated ---
         last_updated = data.get("crime_last_updated") or {}

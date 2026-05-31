@@ -7,9 +7,6 @@
   <img src="https://raw.githubusercontent.com/91JJ/HA_UK_Police/main/custom_components/uk_police/brands/logo.png" alt="UK Police Integration" width="420">
 </p>
 
-
-
-
 A bespoke Home Assistant integration that surfaces live data from the **[UK Police open data API](https://data.police.uk/docs/)** directly into your HA dashboard. Entirely free, no API key required.
 
 ---
@@ -41,6 +38,8 @@ A bespoke Home Assistant integration that surfaces live data from the **[UK Poli
 | Policing Priorities | Number of active priorities |
 | Priority Issues | Current priority issue text + full list in attributes |
 | Force Telephone | Non-emergency number (101 default) |
+| Force Description | Full force description text + URL & telephone in attributes |
+| Force Engagement Channels | Count of social media / online channels + full `links` dict in attributes |
 | Data Last Updated | When the API last received new data |
 
 ### Binary Sensors
@@ -58,7 +57,9 @@ A bespoke Home Assistant integration that surfaces live data from the **[UK Poli
 | Crime Category Pins | One map pin per crime category (e.g. *Anti-social Behaviour (21)*), positioned at the centroid of all crimes in that category. The pin's attributes list every incident with street name and outcome. |
 | Individual Crime Pins | One pin per crime incident, labelled *Crime Type – Street Name*. Available when **Individual incidents** map mode is selected. |
 
-Crime pins appear automatically on the Home Assistant **Map** dashboard view. To add them to a Lovelace card use `type: map` with `geo_location_sources: [uk_police]`.
+Crime pins appear automatically on the Home Assistant **Map** dashboard view. To add them to a Lovelace card use `type: map` with `geo_location_sources: [uk_police_YOUR_FORCE_YOUR_NEIGHBOURHOOD]`.
+
+> **Per-location source** — each configured area gets its own geo_location source name in the format `uk_police_{force}_{neighbourhood}` (e.g. `uk_police_metropolitan_E05013580`). The easiest way to find the exact value for your area is to open any of its sensors in **Developer Tools → States** and look at the `source` attribute — it shows the full ready-to-paste string. This means you can show pins from specific locations separately on different map cards. To show all UK Police pins together simply add each source name to the `geo_location_sources` list.
 
 > **Distances are shown in miles** — appropriate for the UK. Each pin displays how far it is from your HA home location (e.g. `0.34 mi`).
 
@@ -72,6 +73,9 @@ Crime pins appear automatically on the Home Assistant **Map** dashboard view. To
 | `uk_police.refresh` | Force-refresh all (or one) configured area |
 | `uk_police.get_crimes` | Fires `uk_police_crimes_data` event with raw crime list |
 | `uk_police.get_stop_search` | Fires `uk_police_stop_search_data` event with raw s&s list |
+
+### Data Refresh
+The integration checks for new data **once per day** (instead of every hour). On each daily wake-up it makes a single lightweight call to `crime-last-updated`. If the API date is unchanged, the full fetch is skipped and cached values are kept — meaning sensors only update on the ~2-monthly cadence when the police actually publish new data. You can always trigger an immediate refresh via the `uk_police.refresh` service.
 
 ---
 
@@ -121,6 +125,25 @@ To find your exact prefix:
 
 type: vertical-stack
 cards:
+
+  # --- Force header ---
+  - type: markdown
+    content: >
+      ## 🏛️ {{ state_attr('sensor.YOUR_PREFIX_force_description', 'url') | regex_replace('https?://', '') | replace('/', '') }}
+
+      {{ state_attr('sensor.YOUR_PREFIX_force_description', 'full_description') }}
+
+
+      📞 **{{ states('sensor.YOUR_PREFIX_force_telephone') }}**
+      &nbsp;&nbsp;🌐 [Force website]({{ state_attr('sensor.YOUR_PREFIX_force_description', 'url') }})
+
+
+      {% set links = state_attr('sensor.YOUR_PREFIX_force_engagement_channels', 'links') %}
+      {% if links %}
+      **Connect:** {% for title, url in links.items() %}[{{ title }}]({{ url }}){% if not loop.last %} · {% endif %}{% endfor %}
+      {% endif %}
+
+  # --- Crime overview ---
   - type: entities
     title: 🚔 Local Crime Overview
     entities:
@@ -138,7 +161,7 @@ cards:
   - type: map
     title: 🗺️ Crime Map
     geo_location_sources:
-      - uk_police
+      - uk_police_YOUR_FORCE_YOUR_NEIGHBOURHOOD   # e.g. uk_police_metropolitan_west_end
     default_zoom: 13
     aspect_ratio: "16:9"
 

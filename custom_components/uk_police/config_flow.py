@@ -282,7 +282,10 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ): bool,
                     vol.Optional(
                         CONF_CRIME_MONTHS, default=DEFAULT_CRIME_MONTHS
-                    ): vol.In({1: "1 month", 3: "3 months", 6: "6 months", 12: "12 months"}),
+                    ): vol.All(
+                        vol.Coerce(int),
+                        vol.In({1: "1 month", 3: "3 months", 6: "6 months", 12: "12 months"}),
+                    ),
                     vol.Optional(
                         CONF_MAP_MODE, default=DEFAULT_MAP_MODE
                     ): vol.In({MAP_MODE_GROUPED: "Grouped by category", MAP_MODE_INDIVIDUAL: "Individual incidents"}),
@@ -327,7 +330,10 @@ class UKPoliceOptionsFlow(config_entries.OptionsFlow):
                     vol.Optional(
                         CONF_CRIME_MONTHS,
                         default=options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS),
-                    ): vol.In({1: "1 month", 3: "3 months", 6: "6 months", 12: "12 months"}),
+                    ): vol.All(
+                        vol.Coerce(int),
+                        vol.In({1: "1 month", 3: "3 months", 6: "6 months", 12: "12 months"}),
+                    ),
                     vol.Optional(
                         CONF_MAP_MODE,
                         default=options.get(CONF_MAP_MODE, DEFAULT_MAP_MODE),

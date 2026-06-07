@@ -1,7 +1,7 @@
 {
   "domain": "uk_police",
   "name": "UK Police",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "documentation": "https://github.com/91JJ/HA_UK_Police",
   "issue_tracker": "https://github.com/91JJ/HA_UK_Police/issues",
   "codeowners": ["@91JJ"],

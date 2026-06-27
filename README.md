@@ -87,10 +87,10 @@ The `geo_location` platform is enabled for crime incidents only.
 
 Map modes:
 
-- Grouped by category: default; one pin per category, positioned at the category centroid.
+- Grouped by category: default; one stable pin per category, positioned at the category centroid.
 - Individual incidents: one pin per returned crime record.
 
-Pins use the active area mode, include query-area metadata where practical, and remove stale entities when switching between grouped and individual modes.
+Pins use `mdi:police-badge-outline`, use explicit crime-focused names, use the active area mode, include query-area metadata where practical, and remove stale entities when switching between grouped and individual modes. Grouped pin names do not include counts; use the `count` and `by_approximate_location` attributes for details.
 
 To show pins in a map card, use the per-entry source:
 

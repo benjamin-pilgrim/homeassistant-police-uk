@@ -30,24 +30,7 @@ from .coordinator import UKPoliceDataUpdateCoordinator, normalize_incident
 
 _LOGGER = logging.getLogger(__name__)
 
-# Category to MDI icon
-_CATEGORY_ICONS: dict[str, str] = {
-    "anti-social-behaviour": "mdi:account-alert",
-    "bicycle-theft": "mdi:bicycle",
-    "burglary": "mdi:home-alert",
-    "criminal-damage-arson": "mdi:fire-alert",
-    "drugs": "mdi:pill",
-    "other-theft": "mdi:bag-personal-off",
-    "possession-of-weapons": "mdi:knife",
-    "public-order": "mdi:account-group",
-    "robbery": "mdi:robber",
-    "shoplifting": "mdi:storefront-outline",
-    "theft-from-the-person": "mdi:hand-coin",
-    "vehicle-crime": "mdi:car",
-    "violent-crime": "mdi:account-injury",
-    "other-crime": "mdi:police-badge-outline",
-    "all-crime": "mdi:map-marker-alert",
-}
+_MAP_PIN_ICON = "mdi:police-badge-outline"
 
 
 def _haversine_mi(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -236,7 +219,7 @@ class _UKPolicePinBase(
     """Shared base for all Police.uk Local Crime geo_location pins."""
 
     _attr_attribution = ATTRIBUTION
-    _attr_has_entity_name = True
+    _attr_has_entity_name = False
     _attr_should_poll = False
     _attr_unit_of_measurement = "mi"
 
@@ -294,9 +277,8 @@ class UKPoliceCategoryPin(_UKPolicePinBase):
         label = CRIME_CATEGORIES.get(
             self._category, self._category.replace("-", " ").title()
         )
-        count = len(self._crimes)
-        self._attr_name = f"{label} ({count})"
-        self._attr_icon = _CATEGORY_ICONS.get(self._category, "mdi:map-marker-alert")
+        self._attr_name = label
+        self._attr_icon = _MAP_PIN_ICON
         lat, lng = _centroid(self._crimes)
         self._attr_latitude = lat
         self._attr_longitude = lng
@@ -321,11 +303,19 @@ class UKPoliceCategoryPin(_UKPolicePinBase):
         data = self.coordinator.data or {}
         month = data.get("data_month", "")
         incidents = [normalize_incident(crime) for crime in self._crimes]
+        approximate_counts = defaultdict(int)
+        for incident in incidents:
+            approximate_counts[incident.get("approximate_location") or "Unknown"] += 1
         return {
             "category": self._category,
+            "category_name": CRIME_CATEGORIES.get(
+                self._category, self._category.replace("-", " ").title()
+            ),
             "count": len(self._crimes),
             "month": month,
             "incidents": incidents,
+            "by_approximate_location": dict(approximate_counts),
+            "distance_from_query_centre_mi": self._attr_distance,
             "query_area": data.get("query_area", {}),
         }
 
@@ -357,7 +347,7 @@ class UKPoliceCrimePin(_UKPolicePinBase):
         loc = self._crime.get("location") or {}
         street = (loc.get("street") or {}).get("name", "Unknown street")
         self._attr_name = f"{label} - {street}"
-        self._attr_icon = _CATEGORY_ICONS.get(category, "mdi:map-marker-alert")
+        self._attr_icon = _MAP_PIN_ICON
         try:
             lat = float(loc["latitude"])
             lng = float(loc["longitude"])
@@ -386,5 +376,6 @@ class UKPoliceCrimePin(_UKPolicePinBase):
         incident = normalize_incident(self._crime)
         return {
             **incident,
+            "distance_from_query_centre_mi": self._attr_distance,
             "query_area": data.get("query_area", {}),
         }

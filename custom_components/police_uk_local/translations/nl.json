@@ -30,8 +30,8 @@
         "title": "Bevestigen en opties",
         "description": "{force} - {neighbourhood} instellen. Configureer hieronder opties voor criminaliteitsgegevens.",
         "data": {
-          "crime_months": "Criminaliteitsgeschiedenisperiode",
-          "map_mode": "Stijl van kaartspelden",
+          "crime_months": "Maandelijkse geschiedenis",
+          "map_mode": "Kaartspelden",
           "area_mode": "Gebiedsmodus",
           "radius_meters": "Straal in meters"
         }
@@ -52,8 +52,8 @@
       "init": {
         "title": "Police.uk lokale criminaliteit opties",
         "data": {
-          "crime_months": "Criminaliteitsgeschiedenisperiode",
-          "map_mode": "Stijl van kaartspelden",
+          "crime_months": "Maandelijkse geschiedenis",
+          "map_mode": "Kaartspelden",
           "area_mode": "Gebiedsmodus",
           "radius_meters": "Straal in meters"
         }

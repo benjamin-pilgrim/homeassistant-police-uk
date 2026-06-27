@@ -14,7 +14,7 @@ Included:
 - Latest Police.uk data month.
 - Total crimes for the configured area.
 - One enabled crime count sensor per Police.uk crime category, excluding `all-crime`.
-- Grouped-by-category and individual incident `geo_location` map pins.
+- Optional grouped-by-category or individual incident `geo_location` map pins.
 - Optional auto-detect radius mode around the Home Assistant home location.
 - `police_uk_local.get_crimes`, which fires the latest raw crime records capped at 200 records.
 
@@ -57,6 +57,8 @@ Area modes:
 Radius is configured in metres. Minimum is `50`, default is `250`, and maximum is `5000`. Police.uk does not provide a native radius API, so radius mode is an approximation. Large radii can hit Police.uk API result limits.
 
 Manual entries always use Default Police.uk area for this MVP and cannot switch to radius mode.
+
+Monthly history controls how many Police.uk monthly datasets are fetched for sensor history attributes such as `monthly_counts` and `category_monthly_counts`. Current-month sensor states and map pins use the latest available Police.uk data month.
 
 ## Sensors
 
@@ -109,6 +111,7 @@ Map modes:
 
 - Grouped by category: default; one stable pin per category, positioned at the category centroid.
 - Individual incidents: one pin per returned crime record. Multiple records can share the same anonymised Police.uk location.
+- None: disables map pins and removes any existing map pin entities for the entry.
 
 Pins use category names, category-appropriate icons, the active area mode, and query-area metadata where practical. Entity names do not include counts, locations, or record IDs; use attributes such as `count`, `by_approximate_location`, `id`, and `persistent_id` for details.
 

@@ -26,7 +26,9 @@ from .const import (
     DEFAULT_MAP_MODE,
     DEFAULT_CRIME_CATEGORY_ICON,
     DOMAIN,
+    MAP_MODE_GROUPED,
     MAP_MODE_INDIVIDUAL,
+    MAP_MODE_NONE,
 )
 from .coordinator import UKPoliceDataUpdateCoordinator, normalize_incident
 
@@ -90,22 +92,37 @@ async def async_setup_entry(
     """Set up geo_location entities based on the configured map mode."""
     coordinator: UKPoliceDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     map_mode = entry.options.get(CONF_MAP_MODE, DEFAULT_MAP_MODE)
+    if map_mode not in {MAP_MODE_GROUPED, MAP_MODE_INDIVIDUAL, MAP_MODE_NONE}:
+        map_mode = DEFAULT_MAP_MODE
     home_lat: float = coordinator.lat
     home_lng: float = coordinator.lng
 
-    # Purge entity registry entries that belong to the OTHER map mode.
+    # Purge entity registry entries that do not belong to the active map mode.
     # This handles the case where the user switches mode in options; without this,
     # the old entities stay in the registry and show as "Unavailable" forever.
     registry = er.async_get(hass)
-    stale_prefix = (
-        f"{entry.entry_id}_crime_"
-        if map_mode != MAP_MODE_INDIVIDUAL
-        else f"{entry.entry_id}_category_"
-    )
+    managed_prefixes = {
+        f"{entry.entry_id}_category_",
+        f"{entry.entry_id}_crime_",
+    }
+    active_prefixes: set[str] = set()
+    if map_mode == MAP_MODE_GROUPED:
+        active_prefixes.add(f"{entry.entry_id}_category_")
+    elif map_mode == MAP_MODE_INDIVIDUAL:
+        active_prefixes.add(f"{entry.entry_id}_crime_")
+
     for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
-        if entity_entry.unique_id.startswith(stale_prefix):
+        is_managed = any(
+            entity_entry.unique_id.startswith(prefix) for prefix in managed_prefixes
+        )
+        is_active = any(
+            entity_entry.unique_id.startswith(prefix) for prefix in active_prefixes
+        )
+        if is_managed and not is_active:
             registry.async_remove(entity_entry.entity_id)
 
+    if map_mode == MAP_MODE_NONE:
+        return
     if map_mode == MAP_MODE_INDIVIDUAL:
         _setup_individual(hass, entry, coordinator, async_add_entities, home_lat, home_lng)
     else:

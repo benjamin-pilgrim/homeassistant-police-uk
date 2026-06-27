@@ -34,6 +34,7 @@ from .const import (
     DOMAIN,
     MAP_MODE_GROUPED,
     MAP_MODE_INDIVIDUAL,
+    MAP_MODE_NONE,
     MAX_RADIUS_METERS,
     MIN_RADIUS_METERS,
     SETUP_METHOD_AUTO,
@@ -41,6 +42,19 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+_CRIME_MONTH_OPTIONS = {
+    "1": "1 month",
+    "3": "3 months",
+    "6": "6 months",
+    "12": "12 months",
+}
+_VALID_CRIME_MONTHS = {int(months) for months in _CRIME_MONTH_OPTIONS}
+_MAP_MODE_OPTIONS = {
+    MAP_MODE_GROUPED: "Grouped by category",
+    MAP_MODE_INDIVIDUAL: "Individual incidents",
+    MAP_MODE_NONE: "None",
+}
 
 
 class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -274,14 +288,11 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema: dict[Any, Any] = {
             vol.Optional(
-                CONF_CRIME_MONTHS, default=DEFAULT_CRIME_MONTHS
-            ): vol.All(
-                vol.Coerce(int),
-                vol.In({1: "1 month", 3: "3 months", 6: "6 months", 12: "12 months"}),
-            ),
+                CONF_CRIME_MONTHS, default=str(DEFAULT_CRIME_MONTHS)
+            ): vol.In(_CRIME_MONTH_OPTIONS),
             vol.Optional(
                 CONF_MAP_MODE, default=DEFAULT_MAP_MODE
-            ): vol.In({MAP_MODE_GROUPED: "Grouped by category", MAP_MODE_INDIVIDUAL: "Individual incidents"}),
+            ): vol.In(_MAP_MODE_OPTIONS),
         }
         if self._setup_method == SETUP_METHOD_AUTO:
             schema.update(_area_options_schema({}))
@@ -297,8 +308,12 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _entry_options(self, user_input: dict[str, Any]) -> dict[str, Any]:
         options = {
-            CONF_CRIME_MONTHS: user_input.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS),
-            CONF_MAP_MODE: user_input.get(CONF_MAP_MODE, DEFAULT_MAP_MODE),
+            CONF_CRIME_MONTHS: _normalize_crime_months(
+                user_input.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS)
+            ),
+            CONF_MAP_MODE: _normalize_map_mode(
+                user_input.get(CONF_MAP_MODE, DEFAULT_MAP_MODE)
+            ),
         }
         if self._setup_method == SETUP_METHOD_AUTO:
             options[CONF_AREA_MODE] = user_input.get(CONF_AREA_MODE, DEFAULT_AREA_MODE)
@@ -325,21 +340,25 @@ class UKPoliceOptionsFlow(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Manage options."""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            new_options = dict(user_input)
+            new_options[CONF_CRIME_MONTHS] = _normalize_crime_months(
+                new_options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS)
+            )
+            new_options[CONF_MAP_MODE] = _normalize_map_mode(
+                new_options.get(CONF_MAP_MODE, DEFAULT_MAP_MODE)
+            )
+            return self.async_create_entry(title="", data=new_options)
 
         options = self._config_entry.options
         schema: dict[Any, Any] = {
             vol.Optional(
                 CONF_CRIME_MONTHS,
-                default=options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS),
-            ): vol.All(
-                vol.Coerce(int),
-                vol.In({1: "1 month", 3: "3 months", 6: "6 months", 12: "12 months"}),
-            ),
+                default=str(options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS)),
+            ): vol.In(_CRIME_MONTH_OPTIONS),
             vol.Optional(
                 CONF_MAP_MODE,
                 default=options.get(CONF_MAP_MODE, DEFAULT_MAP_MODE),
-            ): vol.In({MAP_MODE_GROUPED: "Grouped by category", MAP_MODE_INDIVIDUAL: "Individual incidents"}),
+            ): vol.In(_MAP_MODE_OPTIONS),
         }
         if self._config_entry.data.get(CONF_SETUP_METHOD) == SETUP_METHOD_AUTO:
             schema.update(_area_options_schema(options))
@@ -369,3 +388,20 @@ def _area_options_schema(options: dict[str, Any]) -> dict[Any, Any]:
             vol.Range(min=MIN_RADIUS_METERS, max=MAX_RADIUS_METERS),
         ),
     }
+
+
+def _normalize_crime_months(value: Any) -> int:
+    try:
+        months = int(value)
+    except (TypeError, ValueError):
+        return DEFAULT_CRIME_MONTHS
+
+    if months in _VALID_CRIME_MONTHS:
+        return months
+    return DEFAULT_CRIME_MONTHS
+
+
+def _normalize_map_mode(value: Any) -> str:
+    if value in _MAP_MODE_OPTIONS:
+        return str(value)
+    return DEFAULT_MAP_MODE

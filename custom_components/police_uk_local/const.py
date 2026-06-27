@@ -32,6 +32,7 @@ AREA_MODE_RADIUS = "radius"
 # Map mode values
 MAP_MODE_GROUPED = "grouped"
 MAP_MODE_INDIVIDUAL = "individual"
+MAP_MODE_NONE = "none"
 
 # Default values
 DEFAULT_CRIME_MONTHS = 3

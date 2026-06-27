@@ -71,7 +71,14 @@ class UKPoliceDataUpdateCoordinator(DataUpdateCoordinator):
 
     @property
     def crime_months(self) -> int:
-        return self.entry.options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS)
+        try:
+            months = int(self.entry.options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS))
+        except (TypeError, ValueError):
+            return DEFAULT_CRIME_MONTHS
+
+        if months in {1, 3, 6, 12}:
+            return months
+        return DEFAULT_CRIME_MONTHS
 
     @property
     def area_mode(self) -> str:

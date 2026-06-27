@@ -30,8 +30,8 @@
         "title": "Confirm and options",
         "description": "Setting up {force} - {neighbourhood}. Configure crime data options below.",
         "data": {
-          "crime_months": "Crime history period",
-          "map_mode": "Map pin style",
+          "crime_months": "Monthly history",
+          "map_mode": "Map pins",
           "area_mode": "Area mode",
           "radius_meters": "Radius in metres"
         }
@@ -52,8 +52,8 @@
       "init": {
         "title": "Police.uk Local Crime options",
         "data": {
-          "crime_months": "Crime history period",
-          "map_mode": "Map pin style",
+          "crime_months": "Monthly history",
+          "map_mode": "Map pins",
           "area_mode": "Area mode",
           "radius_meters": "Radius in metres"
         }

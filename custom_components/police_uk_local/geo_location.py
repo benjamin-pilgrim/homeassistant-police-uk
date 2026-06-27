@@ -30,7 +30,23 @@ from .coordinator import UKPoliceDataUpdateCoordinator, normalize_incident
 
 _LOGGER = logging.getLogger(__name__)
 
-_MAP_PIN_ICON = "mdi:police-badge-outline"
+_DEFAULT_MAP_PIN_ICON = "mdi:police-badge-outline"
+_CATEGORY_ICONS: dict[str, str] = {
+    "anti-social-behaviour": "mdi:account-alert",
+    "bicycle-theft": "mdi:bicycle",
+    "burglary": "mdi:home-alert",
+    "criminal-damage-arson": "mdi:fire-alert",
+    "drugs": "mdi:pill",
+    "other-theft": "mdi:bag-personal-off",
+    "possession-of-weapons": "mdi:knife",
+    "public-order": "mdi:account-group",
+    "robbery": "mdi:robber",
+    "shoplifting": "mdi:storefront-outline",
+    "theft-from-the-person": "mdi:hand-coin",
+    "vehicle-crime": "mdi:car",
+    "violent-crime": "mdi:knife",
+    "other-crime": _DEFAULT_MAP_PIN_ICON,
+}
 
 
 def _haversine_mi(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -278,7 +294,7 @@ class UKPoliceCategoryPin(_UKPolicePinBase):
             self._category, self._category.replace("-", " ").title()
         )
         self._attr_name = label
-        self._attr_icon = _MAP_PIN_ICON
+        self._attr_icon = _CATEGORY_ICONS.get(self._category, _DEFAULT_MAP_PIN_ICON)
         lat, lng = _centroid(self._crimes)
         self._attr_latitude = lat
         self._attr_longitude = lng
@@ -345,10 +361,8 @@ class UKPoliceCrimePin(_UKPolicePinBase):
         category = self._crime.get("category", "other-crime")
         label = CRIME_CATEGORIES.get(category, category.replace("-", " ").title())
         loc = self._crime.get("location") or {}
-        street = (loc.get("street") or {}).get("name", "Unknown street")
-        incident_id = self._crime.get("id") or self._key[:8]
-        self._attr_name = f"{label} - {street} ({incident_id})"
-        self._attr_icon = _MAP_PIN_ICON
+        self._attr_name = label
+        self._attr_icon = _CATEGORY_ICONS.get(category, _DEFAULT_MAP_PIN_ICON)
         try:
             lat = float(loc["latitude"])
             lng = float(loc["longitude"])

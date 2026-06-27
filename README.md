@@ -69,24 +69,26 @@ The integration creates:
 | Crimes - Category | Count for current data month and category | `monthly_counts`, `incidents`, `incident_count`, `incidents_truncated`, `by_approximate_location`, `query_area`, `month` |
 
 Category sensors are created even when the current category count is zero, so automations can target stable entities.
-Category sensors use the same category-specific icons as map pins:
+Category sensors use the same category-specific icons as map pins. Police.uk's
+`all-crime` category is represented by the Total Crimes sensor.
 
-| Category | Icon |
-| --- | --- |
-| Anti-social Behaviour | `mdi:account-alert-outline` |
-| Bicycle Theft | `mdi:bicycle` |
-| Burglary | `mdi:home-lock` |
-| Criminal Damage & Arson | `mdi:fire-alert` |
-| Drugs | `mdi:pill` |
-| Other Theft | `mdi:bag-personal-off` |
-| Possession of Weapons | `mdi:knife` |
-| Public Order | `mdi:bullhorn-outline` |
-| Robbery | `mdi:robber` |
-| Shoplifting | `mdi:cart-off` |
-| Theft from Person | `mdi:hand-coin-outline` |
-| Vehicle Crime | `mdi:car-key` |
-| Violent Crime | `mdi:knife` |
-| Other Crime | `mdi:police-badge-outline` |
+| Police.uk category | Display name | Icon |
+| --- | --- | --- |
+| `all-crime` | All Crime | `mdi:police-badge` |
+| `anti-social-behaviour` | Anti-social Behaviour | `mdi:account-alert-outline` |
+| `bicycle-theft` | Bicycle Theft | `mdi:bicycle` |
+| `burglary` | Burglary | `mdi:home-lock` |
+| `criminal-damage-arson` | Criminal Damage & Arson | `mdi:fire-alert` |
+| `drugs` | Drugs | `mdi:pill` |
+| `other-theft` | Other Theft | `mdi:bag-personal-off` |
+| `possession-of-weapons` | Possession of Weapons | `mdi:knife` |
+| `public-order` | Public Order | `mdi:bullhorn-outline` |
+| `robbery` | Robbery | `mdi:robber` |
+| `shoplifting` | Shoplifting | `mdi:cart-off` |
+| `theft-from-the-person` | Theft from Person | `mdi:hand-coin-outline` |
+| `vehicle-crime` | Vehicle Crime | `mdi:car-key` |
+| `violent-crime` | Violent Crime | `mdi:knife` |
+| `other-crime` | Other Crime | `mdi:police-badge-outline` |
 
 Incident attributes are normalized and capped:
 

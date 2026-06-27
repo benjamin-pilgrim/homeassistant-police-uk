@@ -346,7 +346,8 @@ class UKPoliceCrimePin(_UKPolicePinBase):
         label = CRIME_CATEGORIES.get(category, category.replace("-", " ").title())
         loc = self._crime.get("location") or {}
         street = (loc.get("street") or {}).get("name", "Unknown street")
-        self._attr_name = f"{label} - {street}"
+        incident_id = self._crime.get("id") or self._key[:8]
+        self._attr_name = f"{label} - {street} ({incident_id})"
         self._attr_icon = _MAP_PIN_ICON
         try:
             lat = float(loc["latitude"])

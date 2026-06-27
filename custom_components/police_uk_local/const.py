@@ -61,5 +61,24 @@ CRIME_CATEGORIES = {
     "other-crime": "Other Crime",
 }
 
+DEFAULT_CRIME_CATEGORY_ICON = "mdi:police-badge-outline"
+CRIME_CATEGORY_ICONS = {
+    "all-crime": "mdi:police-badge",
+    "anti-social-behaviour": "mdi:account-alert-outline",
+    "bicycle-theft": "mdi:bicycle",
+    "burglary": "mdi:home-lock",
+    "criminal-damage-arson": "mdi:fire-alert",
+    "drugs": "mdi:pill",
+    "other-theft": "mdi:bag-personal-off",
+    "possession-of-weapons": "mdi:knife",
+    "public-order": "mdi:bullhorn-outline",
+    "robbery": "mdi:robber",
+    "shoplifting": "mdi:cart-off",
+    "theft-from-the-person": "mdi:hand-coin-outline",
+    "vehicle-crime": "mdi:car-key",
+    "violent-crime": "mdi:knife",
+    "other-crime": DEFAULT_CRIME_CATEGORY_ICON,
+}
+
 # Attribution
 ATTRIBUTION = "Data provided by data.police.uk"

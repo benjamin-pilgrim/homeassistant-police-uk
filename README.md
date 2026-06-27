@@ -69,7 +69,24 @@ The integration creates:
 | Crimes - Category | Count for current data month and category | `monthly_counts`, `incidents`, `incident_count`, `incidents_truncated`, `by_approximate_location`, `query_area`, `month` |
 
 Category sensors are created even when the current category count is zero, so automations can target stable entities.
-Category sensors use the same category-specific icons as map pins.
+Category sensors use the same category-specific icons as map pins:
+
+| Category | Icon |
+| --- | --- |
+| Anti-social Behaviour | `mdi:account-alert-outline` |
+| Bicycle Theft | `mdi:bicycle` |
+| Burglary | `mdi:home-lock` |
+| Criminal Damage & Arson | `mdi:fire-alert` |
+| Drugs | `mdi:pill` |
+| Other Theft | `mdi:bag-personal-off` |
+| Possession of Weapons | `mdi:knife` |
+| Public Order | `mdi:bullhorn-outline` |
+| Robbery | `mdi:robber` |
+| Shoplifting | `mdi:cart-off` |
+| Theft from Person | `mdi:hand-coin-outline` |
+| Vehicle Crime | `mdi:car-key` |
+| Violent Crime | `mdi:knife` |
+| Other Crime | `mdi:police-badge-outline` |
 
 Incident attributes are normalized and capped:
 

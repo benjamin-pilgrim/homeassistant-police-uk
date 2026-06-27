@@ -15,27 +15,11 @@ from .const import (
     CONF_FORCE_NAME,
     CONF_NEIGHBOURHOOD_NAME,
     CRIME_CATEGORIES,
+    CRIME_CATEGORY_ICONS,
+    DEFAULT_CRIME_CATEGORY_ICON,
     DOMAIN,
 )
 from .coordinator import UKPoliceDataUpdateCoordinator
-
-_DEFAULT_CATEGORY_ICON = "mdi:police-badge-outline"
-_CATEGORY_ICONS: dict[str, str] = {
-    "anti-social-behaviour": "mdi:account-alert",
-    "bicycle-theft": "mdi:bicycle",
-    "burglary": "mdi:home-alert",
-    "criminal-damage-arson": "mdi:fire-alert",
-    "drugs": "mdi:pill",
-    "other-theft": "mdi:bag-personal-off",
-    "possession-of-weapons": "mdi:knife",
-    "public-order": "mdi:account-group",
-    "robbery": "mdi:robber",
-    "shoplifting": "mdi:storefront-outline",
-    "theft-from-the-person": "mdi:hand-coin",
-    "vehicle-crime": "mdi:car",
-    "violent-crime": "mdi:knife",
-    "other-crime": _DEFAULT_CATEGORY_ICON,
-}
 
 
 async def async_setup_entry(
@@ -170,7 +154,9 @@ class UKPoliceCrimeCategorySensor(UKPoliceBaseSensor):
         self._category_id = category_id
         self._category_name = category_name
         self._attr_name = f"Crimes - {category_name}"
-        self._attr_icon = _CATEGORY_ICONS.get(category_id, _DEFAULT_CATEGORY_ICON)
+        self._attr_icon = CRIME_CATEGORY_ICONS.get(
+            category_id, DEFAULT_CRIME_CATEGORY_ICON
+        )
 
     @property
     def unique_id(self) -> str:

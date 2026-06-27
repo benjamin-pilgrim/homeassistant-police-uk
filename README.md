@@ -58,7 +58,7 @@ Radius is configured in metres. Minimum is `50`, default is `250`, and maximum i
 
 Manual entries always use Default Police.uk area for this MVP and cannot switch to radius mode.
 
-Monthly history controls how many Police.uk monthly datasets are fetched for sensor history attributes such as `monthly_counts` and `category_monthly_counts`. Current-month sensor states and map pins use the latest available Police.uk data month.
+The integration fetches only the latest available Police.uk data month. Home Assistant's recorder, history, statistics, and helper integrations should be used for longer-term comparisons and averages.
 
 ## Sensors
 
@@ -67,8 +67,8 @@ The integration creates:
 | Sensor | State | Key attributes |
 | --- | --- | --- |
 | Data Month | `YYYY-MM` | `query_area`, `data_month_fallback` |
-| Total Crimes | Count for current data month | `by_category`, `monthly_counts`, `latest_incidents`, `incident_count`, `incidents_truncated`, `query_area` |
-| Crimes - Category | Count for current data month and category | `monthly_counts`, `incidents`, `incident_count`, `incidents_truncated`, `by_approximate_location`, `query_area`, `month` |
+| Total Crimes | Count for current data month | `by_category`, `latest_incidents`, `incident_count`, `incidents_truncated`, `query_area` |
+| Crimes - Category | Count for current data month and category | `incidents`, `incident_count`, `incidents_truncated`, `by_approximate_location`, `query_area`, `month` |
 
 Category sensors are created even when the current category count is zero, so automations can target stable entities.
 Category sensors use the same category-specific icons as map pins. Police.uk's
@@ -164,7 +164,7 @@ action:
 
 ## Data Refresh
 
-The coordinator checks `crime-last-updated` once per day. It derives the latest data month from the returned date and walks backward from that verified month for history. The older "today minus two months" heuristic is used only if `crime-last-updated` is unavailable.
+The coordinator checks `crime-last-updated` once per day. It derives the latest data month from the returned date and fetches that month for the configured area. The older "today minus two months" heuristic is used only if `crime-last-updated` is unavailable.
 
 ## License
 

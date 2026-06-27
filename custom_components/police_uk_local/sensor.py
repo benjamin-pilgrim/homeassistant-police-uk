@@ -127,7 +127,6 @@ class UKPoliceTotalCrimesSensor(UKPoliceBaseSensor):
         return {
             "month": self._computed.get("data_month", ""),
             "by_category": self._computed.get("crime_counts_by_category", {}),
-            "monthly_counts": self._computed.get("monthly_counts", {}),
             "latest_incidents": self._computed.get("latest_incidents", []),
             "incident_count": self._computed.get("latest_incident_count", 0),
             "incidents_truncated": self._computed.get(
@@ -169,7 +168,6 @@ class UKPoliceCrimeCategorySensor(UKPoliceBaseSensor):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        monthly_counts = self._computed.get("category_monthly_counts", {})
         incidents = self._computed.get("category_incidents", {})
         incident_counts = self._computed.get("category_incident_counts", {})
         truncated = self._computed.get("category_incidents_truncated", {})
@@ -179,7 +177,6 @@ class UKPoliceCrimeCategorySensor(UKPoliceBaseSensor):
             "category": self._category_id,
             "category_name": self._category_name,
             "month": self._computed.get("data_month", ""),
-            "monthly_counts": monthly_counts.get(self._category_id, {}),
             "incidents": incidents.get(self._category_id, []),
             "incident_count": incident_counts.get(self._category_id, 0),
             "incidents_truncated": truncated.get(self._category_id, False),

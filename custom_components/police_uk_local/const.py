@@ -16,7 +16,6 @@ CONF_NEIGHBOURHOOD_NAME = "neighbourhood_name"
 CONF_FORCE_NAME = "force_name"
 CONF_LATITUDE = "latitude"
 CONF_LONGITUDE = "longitude"
-CONF_CRIME_MONTHS = "crime_months"
 CONF_MAP_MODE = "map_mode"
 CONF_SETUP_METHOD = "setup_method"
 CONF_AREA_MODE = "area_mode"
@@ -35,7 +34,6 @@ MAP_MODE_INDIVIDUAL = "individual"
 MAP_MODE_NONE = "none"
 
 # Default values
-DEFAULT_CRIME_MONTHS = 3
 DEFAULT_MAP_MODE = MAP_MODE_GROUPED
 DEFAULT_AREA_MODE = AREA_MODE_DEFAULT
 DEFAULT_RADIUS_METERS = 250

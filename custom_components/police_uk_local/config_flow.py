@@ -17,7 +17,6 @@ from .const import (
     AREA_MODE_DEFAULT,
     AREA_MODE_RADIUS,
     CONF_AREA_MODE,
-    CONF_CRIME_MONTHS,
     CONF_FORCE,
     CONF_FORCE_NAME,
     CONF_LATITUDE,
@@ -28,7 +27,6 @@ from .const import (
     CONF_RADIUS_METERS,
     CONF_SETUP_METHOD,
     DEFAULT_AREA_MODE,
-    DEFAULT_CRIME_MONTHS,
     DEFAULT_MAP_MODE,
     DEFAULT_RADIUS_METERS,
     DOMAIN,
@@ -43,13 +41,6 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-_CRIME_MONTH_OPTIONS = {
-    "1": "1 month",
-    "3": "3 months",
-    "6": "6 months",
-    "12": "12 months",
-}
-_VALID_CRIME_MONTHS = {int(months) for months in _CRIME_MONTH_OPTIONS}
 _MAP_MODE_OPTIONS = {
     MAP_MODE_GROUPED: "Grouped by category",
     MAP_MODE_INDIVIDUAL: "Individual incidents",
@@ -288,9 +279,6 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema: dict[Any, Any] = {
             vol.Optional(
-                CONF_CRIME_MONTHS, default=str(DEFAULT_CRIME_MONTHS)
-            ): vol.In(_CRIME_MONTH_OPTIONS),
-            vol.Optional(
                 CONF_MAP_MODE, default=DEFAULT_MAP_MODE
             ): vol.In(_MAP_MODE_OPTIONS),
         }
@@ -308,9 +296,6 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _entry_options(self, user_input: dict[str, Any]) -> dict[str, Any]:
         options = {
-            CONF_CRIME_MONTHS: _normalize_crime_months(
-                user_input.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS)
-            ),
             CONF_MAP_MODE: _normalize_map_mode(
                 user_input.get(CONF_MAP_MODE, DEFAULT_MAP_MODE)
             ),
@@ -341,9 +326,6 @@ class UKPoliceOptionsFlow(config_entries.OptionsFlow):
         """Manage options."""
         if user_input is not None:
             new_options = dict(user_input)
-            new_options[CONF_CRIME_MONTHS] = _normalize_crime_months(
-                new_options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS)
-            )
             new_options[CONF_MAP_MODE] = _normalize_map_mode(
                 new_options.get(CONF_MAP_MODE, DEFAULT_MAP_MODE)
             )
@@ -351,10 +333,6 @@ class UKPoliceOptionsFlow(config_entries.OptionsFlow):
 
         options = self._config_entry.options
         schema: dict[Any, Any] = {
-            vol.Optional(
-                CONF_CRIME_MONTHS,
-                default=str(options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS)),
-            ): vol.In(_CRIME_MONTH_OPTIONS),
             vol.Optional(
                 CONF_MAP_MODE,
                 default=options.get(CONF_MAP_MODE, DEFAULT_MAP_MODE),
@@ -388,17 +366,6 @@ def _area_options_schema(options: dict[str, Any]) -> dict[Any, Any]:
             vol.Range(min=MIN_RADIUS_METERS, max=MAX_RADIUS_METERS),
         ),
     }
-
-
-def _normalize_crime_months(value: Any) -> int:
-    try:
-        months = int(value)
-    except (TypeError, ValueError):
-        return DEFAULT_CRIME_MONTHS
-
-    if months in _VALID_CRIME_MONTHS:
-        return months
-    return DEFAULT_CRIME_MONTHS
 
 
 def _normalize_map_mode(value: Any) -> str:

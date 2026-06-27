@@ -146,23 +146,3 @@ class UKPoliceApiClient:
         if isinstance(updated_date, str) and len(updated_date) >= 7:
             return updated_date[:7]
         return None
-
-    @staticmethod
-    def month_strings(months_back: int = 3, latest_month: str | None = None) -> list[str]:
-        """Return YYYY-MM strings walking backward from latest_month."""
-        latest = latest_month or UKPoliceApiClient.fallback_latest_month()
-        latest_y, latest_m = (int(part) for part in latest.split("-", 1))
-        result = []
-        for i in range(months_back):
-            m = latest_m - i
-            y = latest_y
-            while m <= 0:
-                m += 12
-                y -= 1
-            result.append(f"{y}-{m:02d}")
-        return result
-
-    @staticmethod
-    def latest_month() -> str:
-        """Return the fallback latest month as YYYY-MM."""
-        return UKPoliceApiClient.fallback_latest_month()

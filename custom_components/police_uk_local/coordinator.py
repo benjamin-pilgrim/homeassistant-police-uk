@@ -1,7 +1,6 @@
 """DataUpdateCoordinator for Police.uk Local Crime."""
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections import Counter, defaultdict
 from datetime import timedelta
@@ -16,7 +15,6 @@ from .const import (
     AREA_MODE_DEFAULT,
     AREA_MODE_RADIUS,
     CONF_AREA_MODE,
-    CONF_CRIME_MONTHS,
     CONF_FORCE,
     CONF_LATITUDE,
     CONF_LONGITUDE,
@@ -25,7 +23,6 @@ from .const import (
     CONF_SETUP_METHOD,
     CRIME_CATEGORIES,
     DEFAULT_AREA_MODE,
-    DEFAULT_CRIME_MONTHS,
     DEFAULT_RADIUS_METERS,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -38,7 +35,6 @@ from .geometry import circle_polygon
 
 _LOGGER = logging.getLogger(__name__)
 
-_INTER_REQUEST_DELAY = 2.0
 _CATEGORY_INCIDENT_CAP = 50
 _TOTAL_INCIDENT_CAP = 100
 
@@ -68,17 +64,6 @@ class UKPoliceDataUpdateCoordinator(DataUpdateCoordinator):
 
         self._last_data_date: str | None = None
         self._last_query_signature: tuple[Any, ...] | None = None
-
-    @property
-    def crime_months(self) -> int:
-        try:
-            months = int(self.entry.options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS))
-        except (TypeError, ValueError):
-            return DEFAULT_CRIME_MONTHS
-
-        if months in {1, 3, 6, 12}:
-            return months
-        return DEFAULT_CRIME_MONTHS
 
     @property
     def area_mode(self) -> str:
@@ -171,7 +156,7 @@ class UKPoliceDataUpdateCoordinator(DataUpdateCoordinator):
         self,
         prefetched_last_updated: dict | None = None,
     ) -> dict[str, Any]:
-        """Fetch latest and historical crime data for the configured area."""
+        """Fetch the latest available crime data for the configured area."""
         data: dict[str, Any] = {}
         data["crime_last_updated"] = prefetched_last_updated
 
@@ -192,56 +177,18 @@ class UKPoliceDataUpdateCoordinator(DataUpdateCoordinator):
             latest_crimes = []
 
         data["crimes_street"] = latest_crimes or []
-        await asyncio.sleep(_INTER_REQUEST_DELAY)
-
-        month_strings = self.client.month_strings(self.crime_months, data_month)
-        monthly_crimes: list[list[dict]] = []
-        for month in month_strings:
-            if month == data_month:
-                crimes = latest_crimes
-            else:
-                try:
-                    crimes = await self._get_crimes_for_month(month)
-                except UKPoliceApiError as err:
-                    _LOGGER.warning("Failed to fetch crimes for month %s: %s", month, err)
-                    crimes = []
-                await asyncio.sleep(_INTER_REQUEST_DELAY)
-            monthly_crimes.append(crimes or [])
-
-        data["monthly_crimes"] = monthly_crimes
-        data["month_strings"] = month_strings
         data["computed"] = self._compute_stats(data)
         return data
 
     def _compute_stats(self, data: dict[str, Any]) -> dict[str, Any]:
         """Pre-compute sensor-friendly raw counts and incident attributes."""
         crimes = data.get("crimes_street") or []
-        month_strings = data.get("month_strings") or []
-        monthly_crimes = data.get("monthly_crimes") or []
 
         category_counts = {category: 0 for category in CRIME_CATEGORIES if category != "all-crime"}
         counted_categories: Counter = Counter(
             crime.get("category", "other-crime") for crime in crimes
         )
         category_counts.update(dict(counted_categories))
-
-        monthly_counts = {
-            month: len(monthly_crimes[index]) if index < len(monthly_crimes) else 0
-            for index, month in enumerate(month_strings)
-        }
-
-        category_monthly_counts: dict[str, dict[str, int]] = {
-            category: {month: 0 for month in month_strings}
-            for category in CRIME_CATEGORIES
-            if category != "all-crime"
-        }
-        for index, month in enumerate(month_strings):
-            month_crimes = monthly_crimes[index] if index < len(monthly_crimes) else []
-            month_counter = Counter(
-                crime.get("category", "other-crime") for crime in month_crimes
-            )
-            for category in category_monthly_counts:
-                category_monthly_counts[category][month] = month_counter.get(category, 0)
 
         incidents_by_category: dict[str, list[dict[str, Any]]] = defaultdict(list)
         approximate_counts: dict[str, Counter] = {
@@ -265,11 +212,9 @@ class UKPoliceDataUpdateCoordinator(DataUpdateCoordinator):
             "data_month_fallback": data.get("data_month_fallback", False),
             "total_crimes": len(crimes),
             "crime_counts_by_category": category_counts,
-            "monthly_counts": monthly_counts,
             "latest_incidents": latest_incidents[:_TOTAL_INCIDENT_CAP],
             "latest_incident_count": len(latest_incidents),
             "latest_incidents_truncated": len(latest_incidents) > _TOTAL_INCIDENT_CAP,
-            "category_monthly_counts": category_monthly_counts,
             "category_incidents": {
                 category: incidents[:_CATEGORY_INCIDENT_CAP]
                 for category, incidents in incidents_by_category.items()

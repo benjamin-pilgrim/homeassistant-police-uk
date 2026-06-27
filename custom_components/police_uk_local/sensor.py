@@ -12,14 +12,13 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     ATTRIBUTION,
-    CONF_FORCE_NAME,
-    CONF_NEIGHBOURHOOD_NAME,
     CRIME_CATEGORIES,
     CRIME_CATEGORY_ICONS,
     DEFAULT_CRIME_CATEGORY_ICON,
     DOMAIN,
 )
 from .coordinator import UKPoliceDataUpdateCoordinator
+from .naming import area_name_from_entry
 
 
 async def async_setup_entry(
@@ -58,14 +57,12 @@ class UKPoliceBaseSensor(CoordinatorEntity[UKPoliceDataUpdateCoordinator], Senso
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        self._force_name = entry.data.get(CONF_FORCE_NAME, "")
-        self._neighbourhood_name = entry.data.get(CONF_NEIGHBOURHOOD_NAME, "")
 
     @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
-            name=f"{self._force_name} - {self._neighbourhood_name}",
+            name=area_name_from_entry(self._entry),
             manufacturer="data.police.uk",
             model="Police.uk Local Crime",
             entry_type="service",

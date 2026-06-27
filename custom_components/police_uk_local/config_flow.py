@@ -38,6 +38,7 @@ from .const import (
     SETUP_METHOD_AUTO,
     SETUP_METHOD_MANUAL,
 )
+from .naming import area_name_from_entry, area_name_from_values
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -258,13 +259,19 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Final confirmation step with optional settings."""
         if user_input is not None:
+            options = self._entry_options(user_input)
             await self.async_set_unique_id(
                 f"{self._selected_force}_{self._selected_neighbourhood}"
             )
             self._abort_if_unique_id_configured()
 
             return self.async_create_entry(
-                title=f"{self._selected_force_name} - {self._selected_neighbourhood_name}",
+                title=area_name_from_values(
+                    self._selected_force_name,
+                    self._selected_neighbourhood_name,
+                    self._setup_method,
+                    options,
+                ),
                 data={
                     CONF_FORCE: self._selected_force,
                     CONF_FORCE_NAME: self._selected_force_name,
@@ -274,7 +281,7 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_LONGITUDE: self._neighbourhood_lng,
                     CONF_SETUP_METHOD: self._setup_method,
                 },
-                options=self._entry_options(user_input),
+                options=options,
             )
 
         schema: dict[Any, Any] = {
@@ -325,10 +332,28 @@ class UKPoliceOptionsFlow(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Manage options."""
         if user_input is not None:
+            old_title = area_name_from_entry(self._config_entry)
+            legacy_title = area_name_from_values(
+                self._config_entry.data.get(CONF_FORCE_NAME, ""),
+                self._config_entry.data.get(CONF_NEIGHBOURHOOD_NAME, ""),
+                "",
+                {},
+            )
             new_options = dict(user_input)
             new_options[CONF_MAP_MODE] = _normalize_map_mode(
                 new_options.get(CONF_MAP_MODE, DEFAULT_MAP_MODE)
             )
+            new_title = area_name_from_values(
+                self._config_entry.data.get(CONF_FORCE_NAME, ""),
+                self._config_entry.data.get(CONF_NEIGHBOURHOOD_NAME, ""),
+                self._config_entry.data.get(CONF_SETUP_METHOD, ""),
+                new_options,
+            )
+            if self._config_entry.title in {old_title, legacy_title}:
+                self.hass.config_entries.async_update_entry(
+                    self._config_entry,
+                    title=new_title,
+                )
             return self.async_create_entry(title="", data=new_options)
 
         options = self._config_entry.options

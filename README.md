@@ -58,6 +58,8 @@ Radius is configured in metres. Minimum is `50`, default is `250`, and maximum i
 
 Manual entries always use Neighbourhood mode for this MVP and cannot switch to radius mode.
 
+Automatic names use the police force and neighbourhood. Radius mode appends the configured radius, for example `Essex Police - Local 250m`; neighbourhood mode keeps `Essex Police - Local`. User-renamed config entries are left alone.
+
 The integration fetches only the latest available Police.uk data month. Home Assistant's recorder, history, statistics, and helper integrations should be used for longer-term comparisons and averages.
 
 ## Sensors

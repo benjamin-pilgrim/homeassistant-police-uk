@@ -18,9 +18,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     ATTRIBUTION,
-    CONF_FORCE_NAME,
     CONF_MAP_MODE,
-    CONF_NEIGHBOURHOOD_NAME,
     CRIME_CATEGORIES,
     CRIME_CATEGORY_ICONS,
     DEFAULT_MAP_MODE,
@@ -31,6 +29,7 @@ from .const import (
     MAP_MODE_NONE,
 )
 from .coordinator import UKPoliceDataUpdateCoordinator, normalize_incident
+from .naming import area_name_from_entry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -258,11 +257,9 @@ class _UKPolicePinBase(
 
     @property
     def device_info(self) -> DeviceInfo:
-        force_name = self._entry.data.get(CONF_FORCE_NAME, "")
-        neighbourhood_name = self._entry.data.get(CONF_NEIGHBOURHOOD_NAME, "")
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
-            name=f"{force_name} - {neighbourhood_name}",
+            name=area_name_from_entry(self._entry),
             manufacturer="data.police.uk",
             model="Police.uk Local Crime",
             entry_type="service",

@@ -354,8 +354,8 @@ def _area_options_schema(options: dict[str, Any]) -> dict[Any, Any]:
             default=options.get(CONF_AREA_MODE, DEFAULT_AREA_MODE),
         ): vol.In(
             {
-                AREA_MODE_DEFAULT: "Default Police.uk area",
-                AREA_MODE_RADIUS: "Radius around Home Assistant home location",
+                AREA_MODE_DEFAULT: "Neighbourhood",
+                AREA_MODE_RADIUS: "Radius around home",
             }
         ),
         vol.Optional(

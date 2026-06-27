@@ -51,12 +51,12 @@ Setup methods:
 
 Area modes:
 
-- Default Police.uk area: uses Police.uk `lat`/`lng` street-crime queries.
-- Radius around Home Assistant home location: auto-detect entries only; converts a radius into a 16-point polygon and calls Police.uk with `poly=`.
+- Neighbourhood: uses Police.uk `lat`/`lng` street-crime queries for the configured query centre.
+- Radius around home: auto-detect entries only; converts a radius around the Home Assistant home location into a 16-point polygon and calls Police.uk with `poly=`.
 
 Radius is configured in metres. Minimum is `50`, default is `250`, and maximum is `5000`. Police.uk does not provide a native radius API, so radius mode is an approximation. Large radii can hit Police.uk API result limits.
 
-Manual entries always use Default Police.uk area for this MVP and cannot switch to radius mode.
+Manual entries always use Neighbourhood mode for this MVP and cannot switch to radius mode.
 
 The integration fetches only the latest available Police.uk data month. Home Assistant's recorder, history, statistics, and helper integrations should be used for longer-term comparisons and averages.
 

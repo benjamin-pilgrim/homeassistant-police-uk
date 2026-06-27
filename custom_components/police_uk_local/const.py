@@ -44,21 +44,21 @@ POLYGON_POINTS = 16
 
 # Crime categories (Police.uk API standard categories)
 CRIME_CATEGORIES = {
-    "all-crime": "All Crime",
-    "anti-social-behaviour": "Anti-social Behaviour",
-    "bicycle-theft": "Bicycle Theft",
+    "all-crime": "All crime",
+    "anti-social-behaviour": "Anti-social behaviour",
+    "bicycle-theft": "Bicycle theft",
     "burglary": "Burglary",
-    "criminal-damage-arson": "Criminal Damage & Arson",
+    "criminal-damage-arson": "Criminal damage and arson",
     "drugs": "Drugs",
-    "other-theft": "Other Theft",
-    "possession-of-weapons": "Possession of Weapons",
-    "public-order": "Public Order",
+    "other-theft": "Other theft",
+    "possession-of-weapons": "Possession of weapons",
+    "public-order": "Public order",
     "robbery": "Robbery",
     "shoplifting": "Shoplifting",
-    "theft-from-the-person": "Theft from Person",
-    "vehicle-crime": "Vehicle Crime",
-    "violent-crime": "Violent Crime",
-    "other-crime": "Other Crime",
+    "theft-from-the-person": "Theft from the person",
+    "vehicle-crime": "Vehicle crime",
+    "violent-crime": "Violence and sexual offences",
+    "other-crime": "Other crime",
 }
 
 DEFAULT_CRIME_CATEGORY_ICON = "mdi:police-badge-outline"

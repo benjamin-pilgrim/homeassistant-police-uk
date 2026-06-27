@@ -74,21 +74,21 @@ Category sensors use the same category-specific icons as map pins. Police.uk's
 
 | Police.uk category | Display name | Icon |
 | --- | --- | --- |
-| `all-crime` | All Crime | `mdi:police-badge` |
-| `anti-social-behaviour` | Anti-social Behaviour | `mdi:account-alert-outline` |
-| `bicycle-theft` | Bicycle Theft | `mdi:bicycle` |
+| `all-crime` | All crime | `mdi:police-badge` |
+| `anti-social-behaviour` | Anti-social behaviour | `mdi:account-alert-outline` |
+| `bicycle-theft` | Bicycle theft | `mdi:bicycle` |
 | `burglary` | Burglary | `mdi:home-lock` |
-| `criminal-damage-arson` | Criminal Damage & Arson | `mdi:fire-alert` |
+| `criminal-damage-arson` | Criminal damage and arson | `mdi:fire-alert` |
 | `drugs` | Drugs | `mdi:pill` |
-| `other-theft` | Other Theft | `mdi:bag-personal-off` |
-| `possession-of-weapons` | Possession of Weapons | `mdi:knife` |
-| `public-order` | Public Order | `mdi:bullhorn-outline` |
+| `other-theft` | Other theft | `mdi:bag-personal-off` |
+| `possession-of-weapons` | Possession of weapons | `mdi:knife` |
+| `public-order` | Public order | `mdi:bullhorn-outline` |
 | `robbery` | Robbery | `mdi:robber` |
 | `shoplifting` | Shoplifting | `mdi:cart-off` |
-| `theft-from-the-person` | Theft from Person | `mdi:hand-coin-outline` |
-| `vehicle-crime` | Vehicle Crime | `mdi:car-key` |
-| `violent-crime` | Violent Crime | `mdi:knife` |
-| `other-crime` | Other Crime | `mdi:police-badge-outline` |
+| `theft-from-the-person` | Theft from the person | `mdi:hand-coin-outline` |
+| `vehicle-crime` | Vehicle crime | `mdi:car-key` |
+| `violent-crime` | Violence and sexual offences | `mdi:knife` |
+| `other-crime` | Other crime | `mdi:police-badge-outline` |
 
 Incident attributes are normalized and capped:
 

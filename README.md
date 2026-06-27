@@ -69,6 +69,7 @@ The integration creates:
 | Crimes - Category | Count for current data month and category | `monthly_counts`, `incidents`, `incident_count`, `incidents_truncated`, `by_approximate_location`, `query_area`, `month` |
 
 Category sensors are created even when the current category count is zero, so automations can target stable entities.
+Category sensors use the same category-specific icons as map pins.
 
 Incident attributes are normalized and capped:
 

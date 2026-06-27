@@ -1,7 +1,7 @@
 {
-  "name": "UK Police",
+  "name": "Police.uk Local Crime",
   "render_readme": true,
   "homeassistant": "2024.1.0",
   "iot_class": "cloud_polling",
-  "logo": "https://raw.githubusercontent.com/91JJ/HA_UK_Police/main/custom_components/uk_police/brands/logo.png"
+  "logo": "https://raw.githubusercontent.com/benjamin-pilgrim/homeassistant-police-uk/main/custom_components/police_uk_local/brands/logo.png"
 }

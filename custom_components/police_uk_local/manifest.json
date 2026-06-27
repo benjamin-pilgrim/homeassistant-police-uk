@@ -1,0 +1,12 @@
+{
+  "domain": "police_uk_local",
+  "name": "Police.uk Local Crime",
+  "version": "1.1.1",
+  "documentation": "https://github.com/benjamin-pilgrim/homeassistant-police-uk",
+  "issue_tracker": "https://github.com/benjamin-pilgrim/homeassistant-police-uk/issues",
+  "codeowners": [],
+  "requirements": [],
+  "dependencies": [],
+  "iot_class": "cloud_polling",
+  "config_flow": true
+}

@@ -1,0 +1,63 @@
+{
+  "config": {
+    "step": {
+      "select_method": {
+        "title": "Police.uk Local Crime setup",
+        "description": "How would you like to select your neighbourhood?",
+        "data": {
+          "method": "Detection method"
+        }
+      },
+      "auto_detect": {
+        "title": "Auto-detecting neighbourhood",
+        "description": "Using your Home Assistant home location to find your local neighbourhood."
+      },
+      "select_force": {
+        "title": "Select police force",
+        "description": "Choose your regional police force.",
+        "data": {
+          "force": "Police force"
+        }
+      },
+      "select_neighbourhood": {
+        "title": "Select neighbourhood",
+        "description": "Choose your local policing neighbourhood.",
+        "data": {
+          "neighbourhood": "Neighbourhood"
+        }
+      },
+      "confirm": {
+        "title": "Confirm and options",
+        "description": "Setting up {force} - {neighbourhood}. Configure crime data options below.",
+        "data": {
+          "crime_months": "Crime history period",
+          "map_mode": "Map pin style",
+          "area_mode": "Area mode",
+          "radius_meters": "Radius in metres"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the Police.uk API. Please check your internet connection.",
+      "neighbourhood_not_found": "No neighbourhood found for your home location. Please try manual selection.",
+      "no_home_location": "Your Home Assistant home location is not set. Please set it in Settings > System > General.",
+      "unknown": "An unexpected error occurred. Please check the logs."
+    },
+    "abort": {
+      "already_configured": "This neighbourhood is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Police.uk Local Crime options",
+        "data": {
+          "crime_months": "Crime history period",
+          "map_mode": "Map pin style",
+          "area_mode": "Area mode",
+          "radius_meters": "Radius in metres"
+        }
+      }
+    }
+  }
+}

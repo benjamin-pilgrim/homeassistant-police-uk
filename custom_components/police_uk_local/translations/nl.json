@@ -1,0 +1,63 @@
+{
+  "config": {
+    "step": {
+      "select_method": {
+        "title": "Police.uk lokale criminaliteit instellen",
+        "description": "Hoe wilt u uw buurt selecteren?",
+        "data": {
+          "method": "Detectiemethode"
+        }
+      },
+      "auto_detect": {
+        "title": "Buurt automatisch detecteren",
+        "description": "Gebruikt uw Home Assistant-thuislocatie om uw lokale buurt te vinden."
+      },
+      "select_force": {
+        "title": "Selecteer politiemacht",
+        "description": "Kies uw regionale politiemacht.",
+        "data": {
+          "force": "Politiemacht"
+        }
+      },
+      "select_neighbourhood": {
+        "title": "Selecteer buurt",
+        "description": "Kies uw lokale politiebuurt.",
+        "data": {
+          "neighbourhood": "Buurt"
+        }
+      },
+      "confirm": {
+        "title": "Bevestigen en opties",
+        "description": "{force} - {neighbourhood} instellen. Configureer hieronder opties voor criminaliteitsgegevens.",
+        "data": {
+          "crime_months": "Criminaliteitsgeschiedenisperiode",
+          "map_mode": "Stijl van kaartspelden",
+          "area_mode": "Gebiedsmodus",
+          "radius_meters": "Straal in meters"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kan geen verbinding maken met de Police.uk API.",
+      "neighbourhood_not_found": "Geen buurt gevonden voor uw thuislocatie. Probeer handmatige selectie.",
+      "no_home_location": "Uw Home Assistant-thuislocatie is niet ingesteld.",
+      "unknown": "Er is een onverwachte fout opgetreden."
+    },
+    "abort": {
+      "already_configured": "Deze buurt is al geconfigureerd."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Police.uk lokale criminaliteit opties",
+        "data": {
+          "crime_months": "Criminaliteitsgeschiedenisperiode",
+          "map_mode": "Stijl van kaartspelden",
+          "area_mode": "Gebiedsmodus",
+          "radius_meters": "Straal in meters"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+refresh:
+  name: Refresh Police.uk Local Crime data
+  description: Force an immediate refresh of Police.uk crime data for all (or a specific) configured area.
+  fields:
+    entry_id:
+      name: Config Entry ID
+      description: Optional. The config entry ID of a specific area to refresh. Leave blank to refresh all areas.
+      required: false
+      selector:
+        text:
+
+get_crimes:
+  name: Get crimes data
+  description: >
+    Fires a `police_uk_local_crimes_data` event on the event bus containing the raw
+    street-level crime list for the selected area. Useful for automations and
+    custom Lovelace cards.
+  fields:
+    entry_id:
+      name: Config Entry ID
+      description: Optional. Specific config entry to retrieve crimes for.
+      required: false
+      selector:
+        text:

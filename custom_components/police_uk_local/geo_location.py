@@ -1,6 +1,8 @@
-"""Geo location platform for UK Police – crime map pins (grouped or individual)."""
+"""Geo location platform for Police.uk Local Crime map pins."""
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from collections import defaultdict
 from math import atan2, cos, radians, sin, sqrt
@@ -24,11 +26,11 @@ from .const import (
     DOMAIN,
     MAP_MODE_INDIVIDUAL,
 )
-from .coordinator import UKPoliceDataUpdateCoordinator
+from .coordinator import UKPoliceDataUpdateCoordinator, normalize_incident
 
 _LOGGER = logging.getLogger(__name__)
 
-# Category → MDI icon
+# Category to MDI icon
 _CATEGORY_ICONS: dict[str, str] = {
     "anti-social-behaviour": "mdi:account-alert",
     "bicycle-theft": "mdi:bicycle",
@@ -73,22 +75,20 @@ def _centroid(crimes: list[dict]) -> tuple[float | None, float | None]:
     return sum(lats) / len(lats), sum(lngs) / len(lngs)
 
 
-def _crime_key(crime: dict, group_counters: dict[str, int]) -> str:
+def _crime_key(crime: dict) -> str:
     """Return a stable unique key for an individual crime record.
 
-    Uses persistent_id when available (genuinely stable across months).
-    Falls back to a per-category/street counter so entity IDs don't change
-    just because a new data month is loaded — keeping registry churn minimal.
+    Uses persistent_id first, then the API id, then a hash of stable fields.
     """
     pid = crime.get("persistent_id", "")
     if pid:
         return str(pid)
-    loc = crime.get("location") or {}
-    street_id = str((loc.get("street") or {}).get("id", ""))
-    cat = crime.get("category", "other-crime")
-    base = f"{cat}_{street_id}"
-    group_counters[base] = group_counters.get(base, -1) + 1
-    return f"{base}_{group_counters[base]}"
+    api_id = crime.get("id")
+    if api_id:
+        return str(api_id)
+
+    fallback = json.dumps(crime, sort_keys=True, default=str)
+    return hashlib.sha1(fallback.encode("utf-8")).hexdigest()
 
 
 def _remove_from_registry(hass: HomeAssistant, pin: "_UKPolicePinBase") -> None:
@@ -107,11 +107,11 @@ async def async_setup_entry(
     """Set up geo_location entities based on the configured map mode."""
     coordinator: UKPoliceDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     map_mode = entry.options.get(CONF_MAP_MODE, DEFAULT_MAP_MODE)
-    home_lat: float = hass.config.latitude
-    home_lng: float = hass.config.longitude
+    home_lat: float = coordinator.lat
+    home_lng: float = coordinator.lng
 
     # Purge entity registry entries that belong to the OTHER map mode.
-    # This handles the case where the user switches mode in options — without this,
+    # This handles the case where the user switches mode in options; without this,
     # the old entities stay in the registry and show as "Unavailable" forever.
     registry = er.async_get(hass)
     stale_prefix = (
@@ -199,11 +199,8 @@ def _setup_individual(
 
         new_entities: list[UKPoliceCrimePin] = []
         seen: set[str] = set()
-        # Fresh counter per update so per-group indices are consistent
-        group_counters: dict[str, int] = {}
-
         for crime in crimes:
-            key = _crime_key(crime, group_counters)
+            key = _crime_key(crime)
             seen.add(key)
             if key not in tracked:
                 pin = UKPoliceCrimePin(coordinator, entry, key, crime, home_lat, home_lng)
@@ -236,7 +233,7 @@ def _setup_individual(
 class _UKPolicePinBase(
     CoordinatorEntity[UKPoliceDataUpdateCoordinator], GeolocationEvent
 ):
-    """Shared base for all UK Police geo_location pins."""
+    """Shared base for all Police.uk Local Crime geo_location pins."""
 
     _attr_attribution = ATTRIBUTION
     _attr_has_entity_name = True
@@ -254,7 +251,7 @@ class _UKPolicePinBase(
         # Per-entry source so map cards can filter by location.
         # Hyphens in API IDs (e.g. "city-of-london", "west-end") are normalised to
         # underscores so the value is safe to paste directly into a Lovelace card.
-        # Results in e.g. "uk_police_metropolitan_west_end".
+        # Results in e.g. "police_uk_local_metropolitan_west_end".
         self._attr_source = (
             f"{DOMAIN}_{coordinator.force_id}_{coordinator.neighbourhood_id}"
         ).replace("-", "_")
@@ -265,9 +262,9 @@ class _UKPolicePinBase(
         neighbourhood_name = self._entry.data.get(CONF_NEIGHBOURHOOD_NAME, "")
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
-            name=f"{force_name} – {neighbourhood_name}",
+            name=f"{force_name} - {neighbourhood_name}",
             manufacturer="data.police.uk",
-            model="UK Police API",
+            model="Police.uk Local Crime",
             entry_type="service",
         )
 
@@ -321,25 +318,15 @@ class UKPoliceCategoryPin(_UKPolicePinBase):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        month = self.coordinator.client.latest_month() if self.coordinator.data else ""
-        incidents = []
-        for c in self._crimes:
-            loc = c.get("location") or {}
-            street = (loc.get("street") or {}).get("name", "")
-            outcome = c.get("outcome_status") or {}
-            outcome_cat = outcome.get("category", "") if isinstance(outcome, dict) else ""
-            incidents.append(
-                {
-                    "street": street,
-                    "outcome": outcome_cat,
-                    "month": c.get("month", month),
-                }
-            )
+        data = self.coordinator.data or {}
+        month = data.get("data_month", "")
+        incidents = [normalize_incident(crime) for crime in self._crimes]
         return {
             "category": self._category,
             "count": len(self._crimes),
             "month": month,
             "incidents": incidents,
+            "query_area": data.get("query_area", {}),
         }
 
 
@@ -369,7 +356,7 @@ class UKPoliceCrimePin(_UKPolicePinBase):
         label = CRIME_CATEGORIES.get(category, category.replace("-", " ").title())
         loc = self._crime.get("location") or {}
         street = (loc.get("street") or {}).get("name", "Unknown street")
-        self._attr_name = f"{label} – {street}"
+        self._attr_name = f"{label} - {street}"
         self._attr_icon = _CATEGORY_ICONS.get(category, "mdi:map-marker-alert")
         try:
             lat = float(loc["latitude"])
@@ -395,14 +382,9 @@ class UKPoliceCrimePin(_UKPolicePinBase):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        loc = self._crime.get("location") or {}
-        street = (loc.get("street") or {}).get("name", "")
-        outcome = self._crime.get("outcome_status") or {}
-        outcome_cat = outcome.get("category", "") if isinstance(outcome, dict) else ""
+        data = self.coordinator.data or {}
+        incident = normalize_incident(self._crime)
         return {
-            "category": self._crime.get("category", ""),
-            "street": street,
-            "outcome": outcome_cat,
-            "month": self._crime.get("month", ""),
-            "persistent_id": self._crime.get("persistent_id", ""),
+            **incident,
+            "query_area": data.get("query_area", {}),
         }

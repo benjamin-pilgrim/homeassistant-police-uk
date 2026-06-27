@@ -1,42 +1,50 @@
-"""Config flow for UK Police integration."""
+"""Config flow for Police.uk Local Crime."""
 from __future__ import annotations
 
 import asyncio
 import logging
 from typing import Any
 
-import aiohttp
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import aiohttp_client
 
 from .api import UKPoliceApiClient, UKPoliceApiError
 from .const import (
+    AREA_MODE_DEFAULT,
+    AREA_MODE_RADIUS,
+    CONF_AREA_MODE,
     CONF_CRIME_MONTHS,
     CONF_FORCE,
     CONF_FORCE_NAME,
-    CONF_INCLUDE_STOP_SEARCH,
     CONF_LATITUDE,
     CONF_LONGITUDE,
     CONF_MAP_MODE,
     CONF_NEIGHBOURHOOD,
     CONF_NEIGHBOURHOOD_NAME,
+    CONF_RADIUS_METERS,
+    CONF_SETUP_METHOD,
+    DEFAULT_AREA_MODE,
     DEFAULT_CRIME_MONTHS,
-    DEFAULT_INCLUDE_STOP_SEARCH,
     DEFAULT_MAP_MODE,
+    DEFAULT_RADIUS_METERS,
     DOMAIN,
     MAP_MODE_GROUPED,
     MAP_MODE_INDIVIDUAL,
+    MAX_RADIUS_METERS,
+    MIN_RADIUS_METERS,
+    SETUP_METHOD_AUTO,
+    SETUP_METHOD_MANUAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle the config flow for UK Police."""
+    """Handle the config flow for Police.uk Local Crime."""
 
     VERSION = 1
 
@@ -49,11 +57,12 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._selected_neighbourhood_name: str = ""
         self._neighbourhood_lat: float | None = None
         self._neighbourhood_lng: float | None = None
+        self._setup_method: str = SETUP_METHOD_AUTO
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Step 1 – Ask user whether to auto-detect location or pick manually."""
+        """Step 1: ask user whether to auto-detect location or pick manually."""
         return await self.async_step_select_method(user_input)
 
     async def async_step_select_method(
@@ -62,7 +71,9 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Let user choose auto-detect (HA location) or manual force selection."""
         if user_input is not None:
             if user_input["method"] == "auto":
+                self._setup_method = SETUP_METHOD_AUTO
                 return await self.async_step_auto_detect()
+            self._setup_method = SETUP_METHOD_MANUAL
             return await self.async_step_select_force()
 
         return self.async_show_form(
@@ -70,7 +81,7 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required("method", default="auto"): vol.In(
-                        {"auto": "Auto-detect from Home location", "manual": "Select Force & Neighbourhood manually"}
+                        {"auto": "Auto-detect from Home location", "manual": "Select force and neighbourhood manually"}
                     )
                 }
             ),
@@ -88,7 +99,7 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         ha_lat = self.hass.config.latitude
         ha_lng = self.hass.config.longitude
 
-        if not ha_lat or not ha_lng:
+        if ha_lat is None or ha_lng is None:
             errors["base"] = "no_home_location"
             return self.async_show_form(
                 step_id="auto_detect",
@@ -120,8 +131,10 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         self._selected_force = result["force"]
         self._selected_neighbourhood = result["neighbourhood"]
+        self._selected_force_name = self._selected_force
+        self._selected_neighbourhood_name = self._selected_neighbourhood
 
-        # Fetch names for confirmation — space requests to avoid 429
+        # Fetch names for confirmation; space requests to avoid 429.
         try:
             forces = await client.get_forces()
             force_map = {f["id"]: f["name"] for f in forces}
@@ -135,17 +148,8 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._selected_neighbourhood, self._selected_neighbourhood
             )
 
-            await asyncio.sleep(1.0)
-
-            detail = await client.get_neighbourhood_detail(
-                self._selected_force, self._selected_neighbourhood
-            )
-            if detail and detail.get("centre"):
-                self._neighbourhood_lat = float(detail["centre"]["latitude"])
-                self._neighbourhood_lng = float(detail["centre"]["longitude"])
-            else:
-                self._neighbourhood_lat = ha_lat
-                self._neighbourhood_lng = ha_lng
+            self._neighbourhood_lat = ha_lat
+            self._neighbourhood_lng = ha_lng
 
         except UKPoliceApiError as err:
             _LOGGER.warning("Could not fetch neighbourhood details: %s", err)
@@ -157,7 +161,7 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_select_force(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Step 2 – Select police force."""
+        """Step 2: select police force."""
         errors: dict[str, str] = {}
 
         if not self._forces:
@@ -192,7 +196,7 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_select_neighbourhood(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Step 3 – Select neighbourhood within the chosen force."""
+        """Step 3: select neighbourhood within the chosen force."""
         errors: dict[str, str] = {}
 
         if not self._neighbourhoods:
@@ -255,7 +259,7 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
             return self.async_create_entry(
-                title=f"{self._selected_force_name} – {self._selected_neighbourhood_name}",
+                title=f"{self._selected_force_name} - {self._selected_neighbourhood_name}",
                 data={
                     CONF_FORCE: self._selected_force,
                     CONF_FORCE_NAME: self._selected_force_name,
@@ -263,39 +267,45 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_NEIGHBOURHOOD_NAME: self._selected_neighbourhood_name,
                     CONF_LATITUDE: self._neighbourhood_lat,
                     CONF_LONGITUDE: self._neighbourhood_lng,
+                    CONF_SETUP_METHOD: self._setup_method,
                 },
-                options={
-                    CONF_INCLUDE_STOP_SEARCH: user_input.get(
-                        CONF_INCLUDE_STOP_SEARCH, DEFAULT_INCLUDE_STOP_SEARCH
-                    ),
-                    CONF_CRIME_MONTHS: user_input.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS),
-                    CONF_MAP_MODE: user_input.get(CONF_MAP_MODE, DEFAULT_MAP_MODE),
-                },
+                options=self._entry_options(user_input),
             )
+
+        schema: dict[Any, Any] = {
+            vol.Optional(
+                CONF_CRIME_MONTHS, default=DEFAULT_CRIME_MONTHS
+            ): vol.All(
+                vol.Coerce(int),
+                vol.In({1: "1 month", 3: "3 months", 6: "6 months", 12: "12 months"}),
+            ),
+            vol.Optional(
+                CONF_MAP_MODE, default=DEFAULT_MAP_MODE
+            ): vol.In({MAP_MODE_GROUPED: "Grouped by category", MAP_MODE_INDIVIDUAL: "Individual incidents"}),
+        }
+        if self._setup_method == SETUP_METHOD_AUTO:
+            schema.update(_area_options_schema({}))
 
         return self.async_show_form(
             step_id="confirm",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_INCLUDE_STOP_SEARCH, default=DEFAULT_INCLUDE_STOP_SEARCH
-                    ): bool,
-                    vol.Optional(
-                        CONF_CRIME_MONTHS, default=DEFAULT_CRIME_MONTHS
-                    ): vol.All(
-                        vol.Coerce(int),
-                        vol.In({1: "1 month", 3: "3 months", 6: "6 months", 12: "12 months"}),
-                    ),
-                    vol.Optional(
-                        CONF_MAP_MODE, default=DEFAULT_MAP_MODE
-                    ): vol.In({MAP_MODE_GROUPED: "Grouped by category", MAP_MODE_INDIVIDUAL: "Individual incidents"}),
-                }
-            ),
+            data_schema=vol.Schema(schema),
             description_placeholders={
                 "force": self._selected_force_name,
                 "neighbourhood": self._selected_neighbourhood_name,
             },
         )
+
+    def _entry_options(self, user_input: dict[str, Any]) -> dict[str, Any]:
+        options = {
+            CONF_CRIME_MONTHS: user_input.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS),
+            CONF_MAP_MODE: user_input.get(CONF_MAP_MODE, DEFAULT_MAP_MODE),
+        }
+        if self._setup_method == SETUP_METHOD_AUTO:
+            options[CONF_AREA_MODE] = user_input.get(CONF_AREA_MODE, DEFAULT_AREA_MODE)
+            options[CONF_RADIUS_METERS] = user_input.get(
+                CONF_RADIUS_METERS, DEFAULT_RADIUS_METERS
+            )
+        return options
 
     @staticmethod
     @callback
@@ -305,7 +315,7 @@ class UKPoliceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class UKPoliceOptionsFlow(config_entries.OptionsFlow):
-    """Handle options for UK Police integration."""
+    """Handle options for Police.uk Local Crime."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._config_entry = config_entry
@@ -318,26 +328,44 @@ class UKPoliceOptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         options = self._config_entry.options
+        schema: dict[Any, Any] = {
+            vol.Optional(
+                CONF_CRIME_MONTHS,
+                default=options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS),
+            ): vol.All(
+                vol.Coerce(int),
+                vol.In({1: "1 month", 3: "3 months", 6: "6 months", 12: "12 months"}),
+            ),
+            vol.Optional(
+                CONF_MAP_MODE,
+                default=options.get(CONF_MAP_MODE, DEFAULT_MAP_MODE),
+            ): vol.In({MAP_MODE_GROUPED: "Grouped by category", MAP_MODE_INDIVIDUAL: "Individual incidents"}),
+        }
+        if self._config_entry.data.get(CONF_SETUP_METHOD) == SETUP_METHOD_AUTO:
+            schema.update(_area_options_schema(options))
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_INCLUDE_STOP_SEARCH,
-                        default=options.get(CONF_INCLUDE_STOP_SEARCH, DEFAULT_INCLUDE_STOP_SEARCH),
-                    ): bool,
-                    vol.Optional(
-                        CONF_CRIME_MONTHS,
-                        default=options.get(CONF_CRIME_MONTHS, DEFAULT_CRIME_MONTHS),
-                    ): vol.All(
-                        vol.Coerce(int),
-                        vol.In({1: "1 month", 3: "3 months", 6: "6 months", 12: "12 months"}),
-                    ),
-                    vol.Optional(
-                        CONF_MAP_MODE,
-                        default=options.get(CONF_MAP_MODE, DEFAULT_MAP_MODE),
-                    ): vol.In({MAP_MODE_GROUPED: "Grouped by category", MAP_MODE_INDIVIDUAL: "Individual incidents"}),
-                }
-            ),
+            data_schema=vol.Schema(schema),
         )
+
+
+def _area_options_schema(options: dict[str, Any]) -> dict[Any, Any]:
+    return {
+        vol.Optional(
+            CONF_AREA_MODE,
+            default=options.get(CONF_AREA_MODE, DEFAULT_AREA_MODE),
+        ): vol.In(
+            {
+                AREA_MODE_DEFAULT: "Default Police.uk area",
+                AREA_MODE_RADIUS: "Radius around Home Assistant home location",
+            }
+        ),
+        vol.Optional(
+            CONF_RADIUS_METERS,
+            default=options.get(CONF_RADIUS_METERS, DEFAULT_RADIUS_METERS),
+        ): vol.All(
+            vol.Coerce(int),
+            vol.Range(min=MIN_RADIUS_METERS, max=MAX_RADIUS_METERS),
+        ),
+    }

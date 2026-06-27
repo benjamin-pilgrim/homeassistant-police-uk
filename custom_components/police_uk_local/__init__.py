@@ -1,4 +1,4 @@
-"""UK Police integration for Home Assistant."""
+"""Police.uk Local Crime integration for Home Assistant."""
 from __future__ import annotations
 
 import logging
@@ -16,11 +16,11 @@ from .coordinator import UKPoliceDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-_PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.GEO_LOCATION]
+_PLATFORMS = [Platform.SENSOR, Platform.GEO_LOCATION]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up UK Police from a config entry."""
+    """Set up Police.uk Local Crime from a config entry."""
     session = aiohttp_client.async_get_clientsession(hass)
     client = UKPoliceApiClient(session)
 
@@ -52,12 +52,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle options update – reload entry so new options take effect."""
+    """Handle options update; reload entry so new options take effect."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 
 def _register_services(hass: HomeAssistant) -> None:
-    """Register custom services for UK Police."""
+    """Register custom services for Police.uk Local Crime."""
 
     if hass.services.has_service(DOMAIN, "refresh"):
         return
@@ -89,7 +89,7 @@ def _register_services(hass: HomeAssistant) -> None:
                     {
                         "entry_id": eid,
                         "crimes": crimes[:200],  # cap payload size
-                        "month": coordinator.client.latest_month(),
+                        "month": (coordinator.data or {}).get("data_month", ""),
                     },
                 )
 
@@ -100,30 +100,7 @@ def _register_services(hass: HomeAssistant) -> None:
         schema=vol.Schema({vol.Optional("entry_id"): cv.string}),
     )
 
-    async def _handle_get_stop_search(call: ServiceCall) -> None:
-        """Fire an event with stop & search data for chosen entry."""
-        entry_id = call.data.get("entry_id")
-        for eid, coordinator in hass.data.get(DOMAIN, {}).items():
-            if entry_id is None or eid == entry_id:
-                ss = (coordinator.data or {}).get("stop_search", [])
-                hass.bus.async_fire(
-                    f"{DOMAIN}_stop_search_data",
-                    {
-                        "entry_id": eid,
-                        "stop_searches": ss[:200],
-                        "month": coordinator.client.latest_month(),
-                    },
-                )
-
-    hass.services.async_register(
-        DOMAIN,
-        "get_stop_search",
-        _handle_get_stop_search,
-        schema=vol.Schema({vol.Optional("entry_id"): cv.string}),
-    )
-
 
 def _unregister_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, "refresh")
     hass.services.async_remove(DOMAIN, "get_crimes")
-    hass.services.async_remove(DOMAIN, "get_stop_search")
